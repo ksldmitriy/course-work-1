@@ -1,0 +1,40 @@
+* Realistic tasks
+** Global Refactoring
+- [-] Business logic
+  - [ ] application
+  - [ ] instance_renderer
+  - [X] logs
+  - [X] main
+  - [X] render_structs
+  - [ ] window
+- [ ] Vulkan
+  - [ ] buffer
+  - [ ] command buffer
+  - [ ] command pool
+  - [ ] device
+  - [ ] device memory
+  - [ ] instance
+  - [ ] physical device
+  - [ ] queue
+  - [ ] shader module
+  - [ ] swapchain
+  - [ ] templates
+  - [ ] tools
+- [ ] Shaders
+
+* Far future tasks
+** [ ] If this is checked, you are really cool
+  - [ ] Choose physical device
+  - [ ] Swapchain
+    - [ ] Choose: format, present mode, transform and extend
+  - [X] Create several queues of same family if possible
+  - [ ] Pipeline dynamic state (why the fuck do i need it)
+  - [ ] Refactor vk::DeviceMemory or completely remake
+
+    
+** Ideas
+- Maybe create render pass class (pobably not)
+- Create barrier class
+- Lear more about pipeline rasterization state
+
+

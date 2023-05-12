@@ -1,0 +1,17 @@
+/*
+!libs
+!logs.sh
+!.clang-format
+!.gitignore
+!project.org
+!src
+src/*
+!src/vk
+src/vk/*
+!src/vk/*.cpp
+!src/vk/*.hpp
+!src/*.cpp
+!src/*.hpp
+!CMakeLists.txt
+!build.sh
+!shaders
