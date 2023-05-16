@@ -8,7 +8,9 @@ InstanceRenderer::InstanceRenderer(InstanceRendererCreateInfo &create_info) {
   extent = create_info.extent;
   render_pass = create_info.render_pass;
 
-  DEBUG("instance renderer created");
+  Init();
+
+  INFO("instance renderer created");
 }
 
 void InstanceRenderer::Init() {
@@ -23,8 +25,6 @@ void InstanceRenderer::Init() {
   CreatePipeline(extent, render_pass);
 
   CreateCommandBuffer();
-
-  DEBUG("instance renderer inited");
 }
 
 InstanceRenderer::~InstanceRenderer() {
@@ -41,15 +41,16 @@ InstanceRenderer::~InstanceRenderer() {
   vertex_buffer_memory->Free();
   uniform_buffer_memory->Free();
 
-  vkDestroyDescriptorSetLayout(device->GetHandle(), descriptor_set_layout, nullptr);
+  vkDestroyDescriptorSetLayout(device->GetHandle(), descriptor_set_layout,
+                               nullptr);
 
   vkDestroyDescriptorPool(device->GetHandle(), descriptors_pool, nullptr);
-  
+
   vkDestroyPipelineLayout(device->GetHandle(), pipeline_layout, nullptr);
-  
-  vkDestroyPipeline(device->GetHandle(), pipeline,  nullptr);
-  
-  DEBUG("instance renderer destroyed");
+
+  vkDestroyPipeline(device->GetHandle(), pipeline, nullptr);
+
+  INFO("instance renderer destroyed");
 }
 
 void InstanceRenderer::Render(uint32_t image_index,
@@ -116,7 +117,7 @@ void InstanceRenderer::CreateCommandBuffer() {
                             VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0,
                             1, &descriptor_set, 0, nullptr);
 
-    vkCmdDraw(command_buffer->GetHandle(), 3, 1, 0, 0);
+    vkCmdDraw(command_buffer->GetHandle(), 6, 1, 0, 0);
 
     vkCmdEndRenderPass(command_buffer->GetHandle());
 
@@ -125,7 +126,7 @@ void InstanceRenderer::CreateCommandBuffer() {
     command_buffers[i] = move(command_buffer);
   }
 
-  TRACE("render command buffers created");
+  TRACE("instance renderer render command buffers created");
 }
 
 void InstanceRenderer::CreatePipeline(VkExtent2D extent,
@@ -237,7 +238,7 @@ void InstanceRenderer::CreatePipeline(VkExtent2D extent,
     throw vk::CriticalException("cant create pipeline layout");
   }
 
-  TRACE("pipeline layout created");
+  TRACE("instance renderer pipeline layout created");
 
   VkPipelineDynamicStateCreateInfo dynamic_state =
       vk::pipeline_dynamic_state_create_info_template;
@@ -268,7 +269,7 @@ void InstanceRenderer::CreatePipeline(VkExtent2D extent,
     throw vk::CriticalException("cant create pipeline");
   }
 
-  DEBUG("graphics pipeline created");
+  DEBUG("instance renderer graphics pipeline created");
 }
 
 void InstanceRenderer::CreateUniformBuffer() {
@@ -279,7 +280,7 @@ void InstanceRenderer::CreateUniformBuffer() {
 
   uniform_buffer = make_unique<vk::Buffer>(*device, create_info);
 
-  vector<vk::Buffer *> buffers = {uniform_buffer.get()};
+  vector<vk::MemoryObject *> buffers = {uniform_buffer.get()};
   uint32_t uniform_buffer_memory_size =
       vk::DeviceMemory::CalculateMemorySize(buffers);
 
@@ -306,15 +307,14 @@ void InstanceRenderer::CreateUniformBuffer() {
 }
 
 void InstanceRenderer::CreateVertexInputBuffers() {
-  Vertex vertices[3] = {{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                        {{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}},
-                        {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+  Vertex unique_vertices[4] = {{{0.5f, 0.5f}, {1.0f, 1.0f}},
+                               {{0.5f, -0.5f}, {1.0f, 0.0f}},
+                               {{-0.5f, -0.5f}, {0.0f, 0.0f}},
+                               {{-0.5f, 0.5f}, {0.0f, 1.0f}}};
 
-  for (int i = 0; i < 3; i++) {
-    double angle = i * -3.14 / 1.5;
-    glm::fvec2 pos = {sin(angle), -cos(angle)};
-    vertices[i].pos = pos / 6.0f;
-  }
+  Vertex vertices[6] = {unique_vertices[0], unique_vertices[1],
+                        unique_vertices[2], unique_vertices[0],
+                        unique_vertices[2], unique_vertices[3]};
 
   // create buffers
   vk::BufferCreateInfo create_info;
@@ -341,7 +341,7 @@ void InstanceRenderer::CreateVertexInputBuffers() {
 
   uint32_t memory_type = physical_device.ChooseMemoryType(choose_info);
 
-  vector<vk::Buffer *> buffers = {vertex_buffer.get(), instance_buffer.get()};
+  vector<vk::MemoryObject *> buffers = {vertex_buffer.get(), instance_buffer.get()};
 
   VkDeviceSize memory_size = vk::DeviceMemory::CalculateMemorySize(buffers);
 
@@ -351,8 +351,6 @@ void InstanceRenderer::CreateVertexInputBuffers() {
   vertex_buffer_memory->BindBuffer(*vertex_buffer);
   vertex_buffer_memory->BindBuffer(*instance_buffer);
 
-  TRACE("vertex buffer created and binded to memory");
-
   // load data
   char *mapped_memory = (char *)vertex_buffer->Map();
 
@@ -361,7 +359,7 @@ void InstanceRenderer::CreateVertexInputBuffers() {
   vertex_buffer->Flush();
   vertex_buffer->Unmap();
 
-  TRACE("data loaded to vertex buffers");
+  TRACE("instance renderer vertex buffers created");
 }
 
 void InstanceRenderer::UpdateDescriptorSet() {
@@ -380,7 +378,7 @@ void InstanceRenderer::UpdateDescriptorSet() {
 
   vkUpdateDescriptorSets(device->GetHandle(), 1, &write_set, 0, nullptr);
 
-  TRACE("descriptors set updated");
+  TRACE("instance renderer descriptors set updated");
 }
 
 void InstanceRenderer::AllocateDescriptorSet() {
@@ -396,7 +394,7 @@ void InstanceRenderer::AllocateDescriptorSet() {
     throw vk::CriticalException("cant allocate descriptor set");
   }
 
-  TRACE("descriptor set allocated");
+  TRACE("instance renderer descriptor set allocated");
 }
 
 void InstanceRenderer::CreateDescriptorPool() {
@@ -416,7 +414,7 @@ void InstanceRenderer::CreateDescriptorPool() {
     throw vk::CriticalException("cant create descriptor pool");
   }
 
-  TRACE("descriptor pool created");
+  TRACE("instance renderer descriptor pool created");
 }
 
 void InstanceRenderer::CreateDescriptorSetLayout() {
@@ -438,5 +436,5 @@ void InstanceRenderer::CreateDescriptorSetLayout() {
     throw vk::CriticalException("cant create descriptor set layout");
   }
 
-  TRACE("descriptor set layout created");
+  TRACE("instance renderer descriptor set layout created");
 }

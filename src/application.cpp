@@ -62,7 +62,6 @@ void Application::CreateInstanceRenderer() {
   create_info.render_pass = render_pass;
 
   instance_renderer = make_unique<InstanceRenderer>(create_info);
-  instance_renderer->Init();
 }
 
 void Application::CreateSyncObjects() {

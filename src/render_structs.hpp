@@ -7,7 +7,7 @@ using namespace std;
 
 struct Vertex {
   glm::fvec2 pos;
-  glm::fvec3 color;
+  glm::fvec2 tex;
 
   static VkVertexInputBindingDescription
   GetBindingDescription(uint32_t binding);

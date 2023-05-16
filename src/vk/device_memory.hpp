@@ -14,7 +14,7 @@ private:
     VkDeviceSize offset;
     VkDeviceSize buffer_offset;
     VkDeviceSize size;
-    VkBuffer buffer;
+    MemoryObject* memory_object;
 
     bool IsSuitable(VkMemoryRequirements requirements,
                     VkDeviceSize &empty_space);
@@ -30,15 +30,15 @@ private:
 
   MemorySegment mapped_segment;
 
-  void FreeBuffer(VkBuffer buffer);
-  uint32_t FindSegment(VkBuffer buffer);
+  void FreeBuffer(Buffer* buffer);
+  uint32_t FindSegment(MemoryObject* memory_object);
   void FreeSegment(uint32_t segment_index);
   void MergeSegment(uint32_t segment1_index, uint32_t segment2_index);
 
   void OccupieSegment(uint32_t segment_index, VkDeviceSize size,
-                      VkDeviceSize buffer_offset, VkBuffer buffer);
+                      VkDeviceSize buffer_offset, MemoryObject* buffer);
   uint32_t FindSuitableSegment(VkMemoryRequirements requirements);
-  void *MapMemory(VkBuffer buffer);
+  void *MapMemory(MemoryObject* memory_object);
   void Flush();
   void Unmap();
   MemorySegment CreateAlignedMemorySegment(MemorySegment &buffer_segment);
@@ -49,7 +49,7 @@ public:
   DeviceMemory &operator=(DeviceMemory &) = delete;
   ~DeviceMemory();
 
-  static VkDeviceSize CalculateMemorySize(vector<Buffer *>& buffers);
+  static VkDeviceSize CalculateMemorySize(vector<MemoryObject*>& buffers);
   void PrintSegments();
   void BindBuffer(Buffer &buffer);
   void Free();

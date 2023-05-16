@@ -20,8 +20,8 @@ Vertex::GetAttributeDescriptions(uint32_t binding, uint32_t location) {
 
   attribute_descriptions[1].binding = binding;
   attribute_descriptions[1].location = location + 1;
-  attribute_descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-  attribute_descriptions[1].offset = offsetof(Vertex, color);
+  attribute_descriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
+  attribute_descriptions[1].offset = offsetof(Vertex, tex);
 
   return attribute_descriptions;
 }

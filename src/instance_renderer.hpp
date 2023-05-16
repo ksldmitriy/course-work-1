@@ -45,11 +45,11 @@ private:
   void CreatePipeline(VkExtent2D extent, VkRenderPass render_pass);
   void CreateCommandBuffer();
 
+  void Init();
 public:
   InstanceRenderer(InstanceRendererCreateInfo &create_info);
   ~InstanceRenderer();
 
-  void Init();
   void Render(uint32_t image_index, VkSemaphore image_available_semaphore,
               VkSemaphore render_finished_semaphore, VkFence fence);
 };

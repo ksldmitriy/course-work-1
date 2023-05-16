@@ -1,8 +1,9 @@
 #pragma once
+#include "device.hpp"
 #include "exception.hpp"
+#include "memory_object.hpp"
 #include "queue.hpp"
 #include <vulkan/vulkan.h>
-#include "device.hpp"
 
 using namespace std;
 
@@ -16,9 +17,9 @@ struct BufferCreateInfo {
   Queue queue;
 };
 
-class Buffer {
+class Buffer : public MemoryObject {
 private:
-  Device* device;
+  Device *device;
   VkBuffer handle;
   DeviceMemory *memory;
   bool is_binded;
@@ -27,7 +28,7 @@ private:
   VkMemoryRequirements requirements;
 
 public:
-  Buffer(Device& device, BufferCreateInfo &create_info);
+  Buffer(Device &device, BufferCreateInfo &create_info);
   Buffer(Buffer &) = delete;
   Buffer &operator=(Buffer &) = delete;
   ~Buffer();

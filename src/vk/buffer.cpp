@@ -37,14 +37,14 @@ Buffer::~Buffer() {
 }
 
 void Buffer::Destroy() {
-  memory->FreeBuffer(handle);
+  memory->FreeBuffer(this);
 
   is_binded = false;
   vkDestroyBuffer(device->GetHandle(), handle, nullptr);
   handle = 0;
 }
 
-void *Buffer::Map() { return memory->MapMemory(handle); }
+void *Buffer::Map() { return memory->MapMemory(this); }
 
 void Buffer::Flush() { memory->Flush(); }
 
