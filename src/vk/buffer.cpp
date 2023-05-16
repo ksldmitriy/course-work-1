@@ -8,10 +8,7 @@ Buffer::Buffer(Device &device, BufferCreateInfo &create_info) {
   is_binded = false;
   size = create_info.size;
   
-  VkBufferCreateInfo vk_create_info;
-  vk_create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-  vk_create_info.pNext = nullptr;
-  vk_create_info.flags = 0;
+  VkBufferCreateInfo vk_create_info = buffer_create_info_template;
 
   uint32_t queue_family = create_info.queue.GetFamily();
 
@@ -51,10 +48,6 @@ void Buffer::Flush() { memory->Flush(); }
 void Buffer::Unmap() { memory->Unmap(); }
 
 VkBuffer Buffer::GetHandle() { return handle; }
-
-VkMemoryRequirements Buffer::GetMemoryRequirements() { return requirements; }
-
-uint32_t Buffer::GetMemoryTypes() { return requirements.memoryTypeBits; }
 
 VkDeviceSize Buffer::GetSize() { return size; }
 

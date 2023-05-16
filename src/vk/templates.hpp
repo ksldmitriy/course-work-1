@@ -46,5 +46,8 @@ extern VkPipelineDynamicStateCreateInfo
 extern VkImageMemoryBarrier image_memory_barrier_template;
 extern VkRenderPassBeginInfo render_pass_begin_info_template;
 extern VkPresentInfoKHR present_info_template;
+ 
+extern VkBufferCreateInfo buffer_create_info_template;
+extern VkImageCreateInfo image_create_info_template;
 
 } // namespace vk

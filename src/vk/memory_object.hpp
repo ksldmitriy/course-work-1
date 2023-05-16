@@ -6,10 +6,12 @@ using namespace std;
 namespace vk {
 
 class MemoryObject {
-private:
+protected:
+
+  VkMemoryRequirements requirements;
 public:
-  virtual VkMemoryRequirements GetMemoryRequirements() = 0;
-  virtual uint32_t GetMemoryTypes() = 0;
+  VkMemoryRequirements GetMemoryRequirements();
+  uint32_t GetMemoryTypes();
 };
 
 } // namespace vk

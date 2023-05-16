@@ -4,6 +4,7 @@
 #include "memory_object.hpp"
 #include "queue.hpp"
 #include <vulkan/vulkan.h>
+#include "templates.hpp"
 
 using namespace std;
 
@@ -25,7 +26,6 @@ private:
   bool is_binded;
 
   VkDeviceSize size;
-  VkMemoryRequirements requirements;
 
 public:
   Buffer(Device &device, BufferCreateInfo &create_info);
@@ -38,8 +38,6 @@ public:
   void Unmap();
   VkBuffer GetHandle();
   void Destroy();
-  VkMemoryRequirements GetMemoryRequirements();
-  uint32_t GetMemoryTypes();
   VkDeviceSize GetSize();
 
   friend DeviceMemory;
