@@ -1,13 +1,12 @@
 #pragma once
-#include "instance_renderer.hpp"
 #include "logs.hpp"
 #include "render_structs.hpp"
-#include "vk/vulkan.hpp"
 #include "window.hpp"
-#include <GLFW/glfw3.h>
 #include <chrono>
-#include <iostream>
 #include <memory>
+
+#include "instance_renderer.hpp"
+#include "vk/vulkan.hpp"
 
 chrono::high_resolution_clock::time_point typedef time_point;
 chrono::high_resolution_clock::duration typedef duration;
@@ -38,6 +37,9 @@ private:
 
   vk::Queue graphics_queue;
 
+  unique_ptr<vk::DeviceMemory> car_imgae_memory;
+  unique_ptr<vk::Image> car_image;
+
   vector<VkFramebuffer> framebuffers;
 
   void InitVulkan();
@@ -52,7 +54,7 @@ private:
 
   void CleanupSyncObjects();
   void CleanupFramebuffers();
-  
+
   void PreUpdate();
   void Update();
   void UpdateRenderData();
@@ -64,6 +66,8 @@ private:
   void CreateDevice();
 
   void CreateSyncObjects();
+
+  void CreateTextures();
 
 public:
   Application() = default;

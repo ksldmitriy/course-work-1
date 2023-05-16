@@ -8,3 +8,4 @@
 #include "instance.hpp"
 #include "shader_module.hpp"
 #include "swapchain.hpp"
+#include "image.hpp"

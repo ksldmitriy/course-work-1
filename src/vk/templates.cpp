@@ -214,16 +214,21 @@ VkGraphicsPipelineCreateInfo graphics_pipeline_create_info_template = {
 
 VkCommandBufferAllocateInfo command_buffer_allocate_info_template = {
     .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, .pNext = nullptr};
- 
+
 VkBufferCreateInfo buffer_create_info_template = {
     .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
     .pNext = nullptr,
-    .flags = 0};
+    .flags = 0,
+    .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
 
 VkImageCreateInfo image_create_info_template = {
     .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
     .pNext = nullptr,
     .flags = 0,
-    .samples = VK_SAMPLE_COUNT_1_BIT};
+    .extent = {.width = 0, .height = 0, .depth = 1},
+    .mipLevels = 1,
+    .arrayLayers = 1,
+    .samples = VK_SAMPLE_COUNT_1_BIT,
+    .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
 
 } // namespace vk

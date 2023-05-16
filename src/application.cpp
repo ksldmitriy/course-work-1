@@ -6,10 +6,12 @@ Application ::~Application() {
   vkDestroyRenderPass(device->GetHandle(), render_pass, nullptr);
 
   CleanupFramebuffers();
-  
+
   CleanupSyncObjects();
 
   swapchain->Dispose();
+
+  car_image->Destroy();
 
   device->Dispose();
 
@@ -46,11 +48,20 @@ void Application::Prepare() {
 
   CreateFramebuffers();
 
+  CreateTextures();
+
   CreateInstanceRenderer();
 
   program_start = now();
 
   DEBUG("application prepared");
+}
+
+void Application::CreateTextures() {
+  vk::ImageCreateInfo image_crate_info;
+  image_crate_info.size = {10, 10};
+
+  car_image = make_unique<vk::Image>(*device, image_crate_info);
 }
 
 void Application::CreateInstanceRenderer() {
@@ -115,7 +126,7 @@ void Application::RenderLoop() {
       ChangeSurface();
     }
 
-	Window::PollEvents();
+    Window::PollEvents();
   }
 
   DEBUG("render loop exit");
@@ -136,7 +147,7 @@ void Application::ChangeSurface() {
 
   CleanupFramebuffers();
   CreateFramebuffers();
-  
+
   CreateInstanceRenderer();
 }
 
@@ -207,7 +218,7 @@ void Application::CreateFramebuffers() {
   DEBUG("framebuffers created");
 }
 
-void Application::CleanupFramebuffers(){
+void Application::CleanupFramebuffers() {
   for (int i = 0; i < framebuffers.size(); i++) {
     vkDestroyFramebuffer(device->GetHandle(), framebuffers[i], nullptr);
   }

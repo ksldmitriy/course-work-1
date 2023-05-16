@@ -14,7 +14,6 @@ Buffer::Buffer(Device &device, BufferCreateInfo &create_info) {
 
   vk_create_info.size = create_info.size;
   vk_create_info.usage = create_info.usage;
-  vk_create_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
   vk_create_info.queueFamilyIndexCount = 1;
   vk_create_info.pQueueFamilyIndices = &queue_family;
 
