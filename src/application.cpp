@@ -13,6 +13,8 @@ Application ::~Application() {
 
   car_image->Destroy();
 
+  car_image_memory->Free();
+
   device->Dispose();
 
   INFO("application destroyed");
@@ -58,10 +60,44 @@ void Application::Prepare() {
 }
 
 void Application::CreateTextures() {
+  fs::path image_path = "car-texture.png";
+
+  // load car texture from file
+  glm::ivec2 image_size;
+  int image_channels;
+  stbi_uc *image_data =
+      stbi_load(image_path.c_str(), &image_size.x, &image_size.y,
+                &image_channels, STBI_rgb_alpha);
+
+  if (!image_data) {
+    throw CriticalException("cant load texture " + image_path.string());
+  }
+
+  // create car image and its memory
   vk::ImageCreateInfo image_crate_info;
   image_crate_info.size = {10, 10};
 
   car_image = make_unique<vk::Image>(*device, image_crate_info);
+
+  vector<vk::MemoryObject *> memory_objects = {car_image.get()};
+  VkDeviceSize memory_size =
+      vk::DeviceMemory::CalculateMemorySize(memory_objects);
+
+  vk::PhysicalDevice &physical_device = device->GetPhysicalDevice();
+
+  vk::ChooseMemoryTypeInfo choose_info;
+  choose_info.memory_types = car_image->GetMemoryTypes();
+  choose_info.heap_properties = 0;
+  choose_info.properties = 0;
+
+  uint32_t memory_type = physical_device.ChooseMemoryType(choose_info);
+
+  car_image_memory =
+      make_unique<vk::DeviceMemory>(*device, memory_size, memory_type);
+
+  car_image_memory->BindImage(*car_image);
+
+  DEBUG("textures created");
 }
 
 void Application::CreateInstanceRenderer() {

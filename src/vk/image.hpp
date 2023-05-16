@@ -33,8 +33,6 @@ public:
 
   VkImage GetHandle();
   void Destroy();
-  VkMemoryRequirements GetMemoryRequirements();
-  uint32_t GetMemoryTypes();
 
   friend DeviceMemory;
 };

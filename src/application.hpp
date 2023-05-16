@@ -5,6 +5,8 @@
 #include <chrono>
 #include <memory>
 
+#include <stb_image.h>
+
 #include "instance_renderer.hpp"
 #include "vk/vulkan.hpp"
 
@@ -37,7 +39,7 @@ private:
 
   vk::Queue graphics_queue;
 
-  unique_ptr<vk::DeviceMemory> car_imgae_memory;
+  unique_ptr<vk::DeviceMemory> car_image_memory;
   unique_ptr<vk::Image> car_image;
 
   vector<VkFramebuffer> framebuffers;

@@ -37,7 +37,8 @@ DeviceMemory::~DeviceMemory() {
   Free();
 }
 
-VkDeviceSize DeviceMemory::CalculateMemorySize(vector<MemoryObject*> &buffers) {
+VkDeviceSize
+DeviceMemory::CalculateMemorySize(vector<MemoryObject *> &buffers) {
   VkDeviceSize size = 0;
 
   for (int i = 0; i < buffers.size(); i++) {
@@ -49,7 +50,7 @@ VkDeviceSize DeviceMemory::CalculateMemorySize(vector<MemoryObject*> &buffers) {
   return size;
 }
 
-void *DeviceMemory::MapMemory(MemoryObject* memory_object) {
+void *DeviceMemory::MapMemory(MemoryObject *memory_object) {
   uint32_t segment_index = FindSegment(memory_object);
   MemorySegment &buffer_segment = memory_segments[segment_index];
 
@@ -116,6 +117,27 @@ void DeviceMemory::PrintSegments() {
   };
 }
 
+void DeviceMemory::BindImage(Image &buffer) {
+  VkMemoryRequirements requirements = buffer.GetMemoryRequirements();
+  uint32_t segment_index = FindSuitableSegment(requirements);
+
+  MemorySegment &segment = memory_segments[segment_index];
+  VkDeviceSize aligned_pos, aligned_size;
+  segment.GetAlignedSegment(requirements.alignment, &aligned_pos,
+                            &aligned_size);
+  OccupieSegment(segment_index, requirements.size, aligned_pos, &buffer);
+
+  VkResult result =
+      vkBindImageMemory(device, buffer.GetHandle(), handle, aligned_pos);
+  if (result) {
+    throw CriticalException("cant bind buffer to memory");
+  }
+
+  buffer.memory = this;
+
+  TRACE("image binded");
+}
+
 void DeviceMemory::BindBuffer(Buffer &buffer) {
   VkMemoryRequirements requirements = buffer.GetMemoryRequirements();
   uint32_t segment_index = FindSuitableSegment(requirements);
@@ -134,9 +156,11 @@ void DeviceMemory::BindBuffer(Buffer &buffer) {
 
   buffer.memory = this;
   buffer.is_binded = true;
+
+  TRACE("buffer binded");
 }
 
-void DeviceMemory::FreeBuffer(Buffer* buffer) {
+void DeviceMemory::FreeBuffer(Buffer *buffer) {
   uint32_t segment_index = FindSegment(buffer);
   FreeSegment(segment_index);
 };
@@ -175,7 +199,7 @@ void DeviceMemory::MergeSegment(uint32_t segment1_index,
   memory_segments.erase(memory_segments.begin() + segment2_index);
 }
 
-uint32_t DeviceMemory::FindSegment(MemoryObject* memory_object) {
+uint32_t DeviceMemory::FindSegment(MemoryObject *memory_object) {
   for (int i = 0; i < memory_segments.size(); i++) {
     MemorySegment &segment = memory_segments[i];
 
@@ -188,7 +212,8 @@ uint32_t DeviceMemory::FindSegment(MemoryObject* memory_object) {
 }
 
 void DeviceMemory::OccupieSegment(uint32_t segment_index, VkDeviceSize size,
-                                  VkDeviceSize buffer_offset, MemoryObject* memory_object) {
+                                  VkDeviceSize buffer_offset,
+                                  MemoryObject *memory_object) {
   MemorySegment initial_segment = memory_segments[segment_index];
 
   MemorySegment occupied_segment;

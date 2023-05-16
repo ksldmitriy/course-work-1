@@ -1,5 +1,4 @@
 #pragma once
-#include "buffer.hpp"
 #include "command_buffer.hpp"
 #include "command_pool.hpp"
 #include "device.hpp"
@@ -9,3 +8,4 @@
 #include "shader_module.hpp"
 #include "swapchain.hpp"
 #include "image.hpp"
+#include "buffer.hpp"

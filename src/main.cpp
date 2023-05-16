@@ -1,6 +1,10 @@
 #include "main.hpp"
 #include "logs.hpp"
 
+// implement stb image
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
 int main() {
   setup_logs();
 

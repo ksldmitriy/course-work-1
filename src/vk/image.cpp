@@ -22,6 +22,9 @@ Image::Image(Device &device, ImageCreateInfo &create_info) {
     throw CriticalException("cant create image");
   }
 
+
+  vkGetImageMemoryRequirements(device.GetHandle(), handle, &requirements);
+
   TRACE("image created");
 }
 
