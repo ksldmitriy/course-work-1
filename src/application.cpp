@@ -148,6 +148,8 @@ void Application::CreateTextures() {
 }
 
 void Application::CreateInstanceRenderer() {
+  const int total_sprites = 7;
+
   InstanceRendererCreateInfo create_info;
   create_info.device = device.get();
   create_info.queue = graphics_queue;
@@ -155,8 +157,25 @@ void Application::CreateInstanceRenderer() {
   create_info.extent = swapchain->GetExtent();
   create_info.render_pass = render_pass;
   create_info.texture = car_image.get();
+  create_info.sprites_count = total_sprites;
+
+  create_info.sprite_size = glm::fvec2(0.56, 1) / 3.0f;
 
   instance_renderer = make_unique<InstanceRenderer>(create_info);
+
+  vector<InstanceData> sprites(total_sprites);
+  
+  for (int i = 0; i < total_sprites; i++) {
+    InstanceData sprite;
+    sprite.pos.x = -1 + (2.0 / total_sprites) * i;
+    cout << sprite.pos.x << endl;
+    sprite.pos.y = 0;
+    sprite.rot = 0;
+
+    sprites[i] = sprite;
+  }
+
+  instance_renderer->LoadSprites(sprites);
 }
 
 void Application::CreateSyncObjects() {

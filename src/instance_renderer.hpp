@@ -7,9 +7,14 @@ struct InstanceRendererCreateInfo {
   vk::Device *device;
   vk::Queue queue;
   vector<VkFramebuffer> framebuffers;
+
   VkExtent2D extent;
   VkRenderPass render_pass;
+
+  glm::fvec2 sprite_size;
   vk::Image* texture;
+
+  size_t sprites_count;
 };
 
 class InstanceRenderer {
@@ -33,8 +38,14 @@ private:
   VkDescriptorSet descriptor_set;
   VkPipelineLayout pipeline_layout;
 
+  UniformData uniform_data;
+
+  size_t sprites_count;
+  
   VkPipeline pipeline;
 
+  glm::fvec2 sprite_size;
+  
   unique_ptr<vk::CommandPool> command_pool;
   vector<unique_ptr<vk::CommandBuffer>> command_buffers;
 
@@ -59,4 +70,6 @@ public:
 
   void Render(uint32_t image_index, VkSemaphore image_available_semaphore,
               VkSemaphore render_finished_semaphore, VkFence fence);
+
+  void LoadSprites(vector<InstanceData>& sprites);
 };

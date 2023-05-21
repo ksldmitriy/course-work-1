@@ -11,6 +11,14 @@ InstanceRenderer::InstanceRenderer(InstanceRendererCreateInfo &create_info) {
   image = create_info.texture;
   image_view = make_unique<vk::ImageView>(device, image);
 
+  sprite_size = create_info.sprite_size;
+  sprites_count = create_info.sprites_count;
+
+  uniform_data.pos = {0, 0};
+  float screen_ratio =
+      create_info.extent.height / (float)create_info.extent.width;
+  uniform_data.scale = {screen_ratio, 1};
+
   Init();
 
   INFO("instance renderer created");
@@ -30,6 +38,16 @@ void InstanceRenderer::Init() {
   CreatePipeline(extent, render_pass);
 
   CreateCommandBuffer();
+}
+
+void InstanceRenderer::LoadSprites(vector<InstanceData> &sprites) {
+  InstanceData *mapped_instance_data = (InstanceData *)instance_buffer->Map();
+
+  memcpy(mapped_instance_data, sprites.data(),
+         sprites.size() * sizeof(sprites[0]));
+
+  instance_buffer->Flush();
+  instance_buffer->Unmap();
 }
 
 InstanceRenderer::~InstanceRenderer() {
@@ -140,7 +158,7 @@ void InstanceRenderer::CreateCommandBuffer() {
                             VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0,
                             1, &descriptor_set, 0, nullptr);
 
-    vkCmdDraw(command_buffer->GetHandle(), 6, 1, 0, 0);
+    vkCmdDraw(command_buffer->GetHandle(), 6, sprites_count, 0, 0);
 
     vkCmdEndRenderPass(command_buffer->GetHandle());
 
@@ -175,17 +193,18 @@ void InstanceRenderer::CreatePipeline(VkExtent2D extent,
       vertex_shader_stage_create_info, fragment_shader_stage_create_info};
 
   uint32_t location = 0;
-  
+
   vector<VkVertexInputBindingDescription> binding_description;
   auto vertex_binding_description = Vertex::GetBindingDescription(0);
-  auto zalupa_binding_description = InstanceData::GetBindingDescription(1);
+  auto instance_binding_description = InstanceData::GetBindingDescription(1);
 
   binding_description.push_back(vertex_binding_description);
-  binding_description.push_back(zalupa_binding_description);
+  binding_description.push_back(instance_binding_description);
 
   vector<VkVertexInputAttributeDescription> attribute_descriptions;
-  auto vertex_attribute_descriptions = Vertex::GetAttributeDescriptions(0, location);
-  auto zalupa_attribute_descriptions =
+  auto vertex_attribute_descriptions =
+      Vertex::GetAttributeDescriptions(0, location);
+  auto instance_attribute_descriptions =
       InstanceData::GetAttributeDescriptions(1, location);
 
   attribute_descriptions.insert(attribute_descriptions.end(),
@@ -193,8 +212,8 @@ void InstanceRenderer::CreatePipeline(VkExtent2D extent,
                                 vertex_attribute_descriptions.end());
 
   attribute_descriptions.insert(attribute_descriptions.end(),
-                                zalupa_attribute_descriptions.begin(),
-                                zalupa_attribute_descriptions.end());
+                                instance_attribute_descriptions.begin(),
+                                instance_attribute_descriptions.end());
 
   VkPipelineVertexInputStateCreateInfo vertex_input =
       vk::vertex_input_create_info_template;
@@ -323,9 +342,9 @@ void InstanceRenderer::CreateUniformBuffer() {
 
   uniform_buffer_memory->BindBuffer(*uniform_buffer);
 
-  UniformData *uniform_data = (UniformData *)uniform_buffer->Map();
+  UniformData *mapped_uniform_data = (UniformData *)uniform_buffer->Map();
 
-  uniform_data->scale = {1, 1};
+  *mapped_uniform_data = uniform_data;
 
   uniform_buffer->Flush();
   uniform_buffer->Unmap();
@@ -336,6 +355,11 @@ void InstanceRenderer::CreateVertexInputBuffers() {
                                {{0.5f, -0.5f}, {1.0f, 0.0f}},
                                {{-0.5f, -0.5f}, {0.0f, 0.0f}},
                                {{-0.5f, 0.5f}, {0.0f, 1.0f}}};
+
+  for (auto &v : unique_vertices) {
+    v.pos.x *= sprite_size.x;
+    v.pos.y *= sprite_size.y;
+  }
 
   Vertex vertices[6] = {unique_vertices[0], unique_vertices[1],
                         unique_vertices[2], unique_vertices[0],
@@ -349,7 +373,7 @@ void InstanceRenderer::CreateVertexInputBuffers() {
 
   vertex_buffer = make_unique<vk::Buffer>(*device, create_info);
 
-  create_info.size = sizeof(InstanceData);
+  create_info.size = sizeof(InstanceData) * sprites_count;
 
   instance_buffer = make_unique<vk::Buffer>(*device, create_info);
 
@@ -405,7 +429,7 @@ void InstanceRenderer::UpdateDescriptorSet() {
   ubo_write_set.pBufferInfo = &buffer_info;
 
   write_sets.push_back(ubo_write_set);
-  
+
   VkDescriptorImageInfo image_info;
   image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   image_info.imageView = image_view->GetHandle();
@@ -421,7 +445,8 @@ void InstanceRenderer::UpdateDescriptorSet() {
 
   write_sets.push_back(texture_write_set);
 
-  vkUpdateDescriptorSets(device->GetHandle(), write_sets.size(), write_sets.data(), 0, nullptr);
+  vkUpdateDescriptorSets(device->GetHandle(), write_sets.size(),
+                         write_sets.data(), 0, nullptr);
 
   TRACE("instance renderer descriptors set updated");
 }
