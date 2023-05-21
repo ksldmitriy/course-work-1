@@ -13,8 +13,6 @@ struct InstanceRendererCreateInfo {
 
   glm::fvec2 sprite_size;
   vk::Image* texture;
-
-  size_t sprites_count;
 };
 
 class InstanceRenderer {
@@ -22,7 +20,7 @@ private:
   vk::Device *device;
   vk::Queue queue;
 
-  unique_ptr<vk::DeviceMemory> vertex_buffer_memory, uniform_buffer_memory;
+  unique_ptr<vk::DeviceMemory> vertex_buffer_memory, instance_buffer_memory, uniform_buffer_memory;
   unique_ptr<vk::Buffer> vertex_buffer, instance_buffer, uniform_buffer;
 
   vk::Image* image;
@@ -40,6 +38,7 @@ private:
 
   UniformData uniform_data;
 
+  size_t sprites_capacity;
   size_t sprites_count;
   
   VkPipeline pipeline;
@@ -49,6 +48,8 @@ private:
   unique_ptr<vk::CommandPool> command_pool;
   vector<unique_ptr<vk::CommandBuffer>> command_buffers;
 
+  size_t GetOptimalSpritesCapacity(size_t sprites_count);
+  
   void CreateUniformBuffer();
   void CreateDescriptorSetLayout();
   void CreateDescriptorPool();
@@ -58,8 +59,9 @@ private:
 
   void CreateTextureSampler();
   
-  void CreateVertexInputBuffers();
-
+  void CreateVertexBuffer();
+  void CreateInstanceBuffers(size_t size);
+  
   void CreatePipeline(VkExtent2D extent, VkRenderPass render_pass);
   void CreateCommandBuffer();
 

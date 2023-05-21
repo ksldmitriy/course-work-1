@@ -157,7 +157,6 @@ void Application::CreateInstanceRenderer() {
   create_info.extent = swapchain->GetExtent();
   create_info.render_pass = render_pass;
   create_info.texture = car_image.get();
-  create_info.sprites_count = total_sprites;
 
   create_info.sprite_size = glm::fvec2(0.56, 1) / 3.0f;
 
@@ -168,7 +167,6 @@ void Application::CreateInstanceRenderer() {
   for (int i = 0; i < total_sprites; i++) {
     InstanceData sprite;
     sprite.pos.x = -1 + (2.0 / total_sprites) * i;
-    cout << sprite.pos.x << endl;
     sprite.pos.y = 0;
     sprite.rot = 0;
 
