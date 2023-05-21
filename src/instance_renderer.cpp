@@ -8,17 +8,12 @@ InstanceRenderer::InstanceRenderer(InstanceRendererCreateInfo &create_info) {
   extent = create_info.extent;
   render_pass = create_info.render_pass;
 
-  image = create_info.texture;
-  image_view = make_unique<vk::ImageView>(device, image);
+  texture = create_info.texture;
+  texture_view = make_unique<vk::ImageView>(device, texture);
 
   sprite_size = create_info.sprite_size;
   sprites_count = 0;
   sprites_capacity = GetOptimalSpritesCapacity(0);
-
-  uniform_data.pos = {0, 0};
-  float screen_ratio =
-      create_info.extent.height / (float)create_info.extent.width;
-  uniform_data.scale = {screen_ratio, 1};
 
   Init();
 
@@ -28,7 +23,9 @@ InstanceRenderer::InstanceRenderer(InstanceRendererCreateInfo &create_info) {
 void InstanceRenderer::Init() {
   CreateVertexBuffer();
   CreateInstanceBuffers(sprites_capacity);
+
   CreateUniformBuffer();
+  SetCamera({0, 0}, 1);
 
   CreateTextureSampler();
 
@@ -40,6 +37,18 @@ void InstanceRenderer::Init() {
   CreatePipeline(extent, render_pass);
 
   CreateCommandBuffer();
+}
+
+void InstanceRenderer::SetCamera(glm::fvec2 pos, float scale) {
+  UniformData *uniform_data = (UniformData *)uniform_buffer->Map();
+
+  uniform_data->pos = pos;
+  float screen_ratio = extent.height / (float)extent.width;
+  uniform_data->scale = {screen_ratio, 1};
+  uniform_data->scale *= scale;
+
+  uniform_buffer->Flush();
+  uniform_buffer->Unmap();
 }
 
 void InstanceRenderer::LoadSprites(vector<InstanceData> &sprites) {
@@ -79,7 +88,7 @@ InstanceRenderer::~InstanceRenderer() {
   uniform_buffer_memory->Free();
 
   vkDestroySampler(device->GetHandle(), texture_sampler, nullptr);
-  image_view->Destroy();
+  texture_view->Destroy();
 
   vkDestroyDescriptorSetLayout(device->GetHandle(), descriptor_set_layout,
                                nullptr);
@@ -361,13 +370,6 @@ void InstanceRenderer::CreateUniformBuffer() {
       *device, uniform_buffer->GetSize(), memory_type);
 
   uniform_buffer_memory->BindBuffer(*uniform_buffer);
-
-  UniformData *mapped_uniform_data = (UniformData *)uniform_buffer->Map();
-
-  *mapped_uniform_data = uniform_data;
-
-  uniform_buffer->Flush();
-  uniform_buffer->Unmap();
 }
 
 size_t InstanceRenderer::GetOptimalSpritesCapacity(size_t sprites_count) {
@@ -483,7 +485,7 @@ void InstanceRenderer::UpdateDescriptorSet() {
 
   VkDescriptorImageInfo image_info;
   image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  image_info.imageView = image_view->GetHandle();
+  image_info.imageView = texture_view->GetHandle();
   image_info.sampler = texture_sampler;
 
   VkWriteDescriptorSet texture_write_set = vk::write_descriptor_set_template;

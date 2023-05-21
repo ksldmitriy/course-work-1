@@ -174,6 +174,8 @@ void Application::CreateInstanceRenderer() {
   }
 
   instance_renderer->LoadSprites(sprites);
+
+  instance_renderer->SetCamera({0.3, 0.3}, 0.5);
 }
 
 void Application::CreateSyncObjects() {

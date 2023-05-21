@@ -23,8 +23,8 @@ private:
   unique_ptr<vk::DeviceMemory> vertex_buffer_memory, instance_buffer_memory, uniform_buffer_memory;
   unique_ptr<vk::Buffer> vertex_buffer, instance_buffer, uniform_buffer;
 
-  vk::Image* image;
-  unique_ptr<vk::ImageView> image_view;
+  vk::Image* texture;
+  unique_ptr<vk::ImageView> texture_view;
   VkSampler texture_sampler;
   
   vector<VkFramebuffer> framebuffers;
@@ -35,8 +35,6 @@ private:
   VkDescriptorPool descriptors_pool;
   VkDescriptorSet descriptor_set;
   VkPipelineLayout pipeline_layout;
-
-  UniformData uniform_data;
 
   size_t sprites_capacity;
   size_t sprites_count;
@@ -73,5 +71,7 @@ public:
   void Render(uint32_t image_index, VkSemaphore image_available_semaphore,
               VkSemaphore render_finished_semaphore, VkFence fence);
 
+  void SetCamera(glm::fvec2 pos, float scale);
+  
   void LoadSprites(vector<InstanceData>& sprites);
 };
