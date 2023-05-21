@@ -11,15 +11,15 @@ Vertex::GetBindingDescription(uint32_t binding) {
 }
 
 vector<VkVertexInputAttributeDescription>
-Vertex::GetAttributeDescriptions(uint32_t binding, uint32_t location) {
+Vertex::GetAttributeDescriptions(uint32_t binding, uint32_t &location) {
   vector<VkVertexInputAttributeDescription> attribute_descriptions(2);
   attribute_descriptions[0].binding = binding;
-  attribute_descriptions[0].location = location;
+  attribute_descriptions[0].location = location++;
   attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
   attribute_descriptions[0].offset = offsetof(Vertex, pos);
 
   attribute_descriptions[1].binding = binding;
-  attribute_descriptions[1].location = location + 1;
+  attribute_descriptions[1].location = location++;
   attribute_descriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
   attribute_descriptions[1].offset = offsetof(Vertex, tex);
 
@@ -37,15 +37,15 @@ InstanceData::GetBindingDescription(uint32_t binding) {
 }
 
 vector<VkVertexInputAttributeDescription>
-InstanceData::GetAttributeDescriptions(uint32_t binding, uint32_t location) {
+InstanceData::GetAttributeDescriptions(uint32_t binding, uint32_t &location) {
   vector<VkVertexInputAttributeDescription> attribute_descriptions(2);
   attribute_descriptions[0].binding = binding;
-  attribute_descriptions[0].location = location;
+  attribute_descriptions[0].location = location++;
   attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
   attribute_descriptions[0].offset = offsetof(InstanceData, pos);
 
   attribute_descriptions[1].binding = binding;
-  attribute_descriptions[1].location = location + 1;
+  attribute_descriptions[1].location = location++;
   attribute_descriptions[1].format = VK_FORMAT_R32_SFLOAT;
   attribute_descriptions[1].offset = offsetof(InstanceData, rot);
 
@@ -63,15 +63,15 @@ UniformData::GetBindingDescription(uint32_t binding) {
 }
 
 vector<VkVertexInputAttributeDescription>
-UniformData::GetAttributeDescriptions(uint32_t binding, uint32_t location) {
+UniformData::GetAttributeDescriptions(uint32_t binding, uint32_t &location) {
   vector<VkVertexInputAttributeDescription> attribute_descriptions(2);
   attribute_descriptions[0].binding = binding;
-  attribute_descriptions[0].location = location;
+  attribute_descriptions[0].location = location++;
   attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
   attribute_descriptions[0].offset = offsetof(UniformData, scale);
 
   attribute_descriptions[1].binding = binding;
-  attribute_descriptions[1].location = location;
+  attribute_descriptions[1].location = location++;
   attribute_descriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
   attribute_descriptions[1].offset = offsetof(UniformData, pos);
 

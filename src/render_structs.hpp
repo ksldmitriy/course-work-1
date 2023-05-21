@@ -12,7 +12,7 @@ struct Vertex {
   static VkVertexInputBindingDescription
   GetBindingDescription(uint32_t binding);
   static vector<VkVertexInputAttributeDescription>
-  GetAttributeDescriptions(uint32_t binding, uint32_t location);
+  GetAttributeDescriptions(uint32_t binding, uint32_t &location);
 };
 
 struct InstanceData {
@@ -22,7 +22,7 @@ struct InstanceData {
   static VkVertexInputBindingDescription
   GetBindingDescription(uint32_t binding);
   static vector<VkVertexInputAttributeDescription>
-  GetAttributeDescriptions(uint32_t binding, uint32_t location);
+  GetAttributeDescriptions(uint32_t binding, uint32_t &location);
 };
 
 struct UniformData {
@@ -32,5 +32,5 @@ struct UniformData {
   static VkVertexInputBindingDescription
   GetBindingDescription(uint32_t binding);
   static vector<VkVertexInputAttributeDescription>
-  GetAttributeDescriptions(uint32_t binding, uint32_t location);
+  GetAttributeDescriptions(uint32_t binding, uint32_t &location);
 };

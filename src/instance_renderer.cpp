@@ -174,6 +174,8 @@ void InstanceRenderer::CreatePipeline(VkExtent2D extent,
   VkPipelineShaderStageCreateInfo shader_stages[2] = {
       vertex_shader_stage_create_info, fragment_shader_stage_create_info};
 
+  uint32_t location = 0;
+  
   vector<VkVertexInputBindingDescription> binding_description;
   auto vertex_binding_description = Vertex::GetBindingDescription(0);
   auto zalupa_binding_description = InstanceData::GetBindingDescription(1);
@@ -182,9 +184,9 @@ void InstanceRenderer::CreatePipeline(VkExtent2D extent,
   binding_description.push_back(zalupa_binding_description);
 
   vector<VkVertexInputAttributeDescription> attribute_descriptions;
-  auto vertex_attribute_descriptions = Vertex::GetAttributeDescriptions(0, 0);
+  auto vertex_attribute_descriptions = Vertex::GetAttributeDescriptions(0, location);
   auto zalupa_attribute_descriptions =
-      InstanceData::GetAttributeDescriptions(1, 2);
+      InstanceData::GetAttributeDescriptions(1, location);
 
   attribute_descriptions.insert(attribute_descriptions.end(),
                                 vertex_attribute_descriptions.begin(),
