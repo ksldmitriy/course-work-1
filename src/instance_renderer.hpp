@@ -9,6 +9,7 @@ struct InstanceRendererCreateInfo {
   vector<VkFramebuffer> framebuffers;
   VkExtent2D extent;
   VkRenderPass render_pass;
+  vk::Image* texture;
 };
 
 class InstanceRenderer {
@@ -19,6 +20,10 @@ private:
   unique_ptr<vk::DeviceMemory> vertex_buffer_memory, uniform_buffer_memory;
   unique_ptr<vk::Buffer> vertex_buffer, instance_buffer, uniform_buffer;
 
+  vk::Image* image;
+  unique_ptr<vk::ImageView> image_view;
+  VkSampler texture_sampler;
+  
   vector<VkFramebuffer> framebuffers;
   VkExtent2D extent;
   VkRenderPass render_pass;
@@ -40,6 +45,8 @@ private:
   void CreateDescriptors();
   void UpdateDescriptorSet();
 
+  void CreateTextureSampler();
+  
   void CreateVertexInputBuffers();
 
   void CreatePipeline(VkExtent2D extent, VkRenderPass render_pass);

@@ -1,11 +1,12 @@
 #pragma once
 #include "device.hpp"
 #include "exception.hpp"
+#include "glm/glm.hpp"
+#include "image_barrier.hpp"
 #include "memory_object.hpp"
 #include "queue.hpp"
-#include <vulkan/vulkan.h>
 #include "templates.hpp"
-#include "glm/glm.hpp"
+#include <vulkan/vulkan.h>
 
 using namespace std;
 
@@ -15,6 +16,8 @@ class DeviceMemory;
 
 struct ImageCreateInfo {
   glm::ivec2 size;
+  VkFormat format;
+  VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
 };
 
 class Image : public MemoryObject {
@@ -23,7 +26,9 @@ private:
   VkImage handle;
   DeviceMemory *memory;
 
-  VkDeviceSize size;
+  VkExtent3D extent;
+  VkFormat format;
+  VkImageLayout current_layout;
 
 public:
   Image(Device &device, ImageCreateInfo &create_info);
@@ -34,6 +39,12 @@ public:
   VkImage GetHandle();
   void Destroy();
 
+  VkImageLayout GetLayout();
+  VkImageLayout ChangeLayout(VkImageLayout new_layout);
+
+  VkExtent3D GetExtent();
+  VkFormat GetFormat();
+  
   friend DeviceMemory;
 };
 

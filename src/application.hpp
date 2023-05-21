@@ -25,6 +25,9 @@ private:
 
   unique_ptr<InstanceRenderer> instance_renderer;
 
+  unique_ptr<vk::CommandPool> command_pool;
+  unique_ptr<vk::CommandBuffer> staging_command_buffer;
+  
   unique_ptr<vk::Instance> instance;
   unique_ptr<vk::Device> device;
 

@@ -15,11 +15,15 @@ class CommandPool {
 private:
   VkCommandPool handle;
   Device *device;
+  Queue queue;
 
+  VkFence solo_execute_fence;
+  
   uint32_t capacity;
   uint32_t size;
 
-  void DisposeCommandBufferCallback(); 
+  void DisposeCommandBufferCallback();
+  void CreateSoloExecuteFence();
   
 public:
   CommandPool(Device &device, Queue& queue, uint32_t capacity);

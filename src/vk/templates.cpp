@@ -17,6 +17,16 @@ VkDeviceCreateInfo device_create_info_template = {
     .ppEnabledExtensionNames = nullptr,
     .pEnabledFeatures = nullptr};
 
+VkImageSubresourceRange image_subresource_range_template = {
+    .baseMipLevel = 0,
+    .levelCount = 1,
+    .baseArrayLayer = 0,
+    .layerCount = 1,
+};
+
+VkMemoryBarrier memory_barrier_template = {
+    .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER, .pNext = nullptr};
+
 VkBufferMemoryBarrier buffer_barrier_template = {
     .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
     .pNext = nullptr,
@@ -141,9 +151,6 @@ VkImageViewCreateInfo image_view_create_info_template = {
     .pNext = nullptr,
     .flags = 0};
 
-VkImageSubresourceRange image_subresource_range_template = {
-    .baseMipLevel = 0, .levelCount = 1, .baseArrayLayer = 0, .layerCount = 1};
-
 VkFramebufferCreateInfo framebuffer_create_info_template = {
     .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
     .pNext = nullptr,
@@ -230,5 +237,23 @@ VkImageCreateInfo image_create_info_template = {
     .arrayLayers = 1,
     .samples = VK_SAMPLE_COUNT_1_BIT,
     .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
+
+VkSamplerCreateInfo sampler_create_info_template = {
+    .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+	.pNext = nullptr,
+	.flags = 0,
+    .magFilter = VK_FILTER_LINEAR,
+    .minFilter = VK_FILTER_LINEAR,
+    .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+    .mipLodBias = 0.0f,
+    .anisotropyEnable = VK_FALSE,
+    .maxAnisotropy = 1,
+    .compareEnable = VK_FALSE,
+    .compareOp = VK_COMPARE_OP_ALWAYS,
+    .minLod = 0.0f,
+    .maxLod = 0.0f,
+    .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+    .unnormalizedCoordinates = VK_FALSE
+    };
 
 } // namespace vk

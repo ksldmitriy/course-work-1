@@ -1,5 +1,6 @@
 #pragma once
 #include "device.hpp"
+#include "queue.hpp"
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
 
@@ -14,12 +15,19 @@ enum class CommandBufferLevel {
   secondary = VK_COMMAND_BUFFER_LEVEL_SECONDARY
 };
 
+struct CommandBufferCreateInfo {
+  CommandPool *pool;
+  CommandBufferLevel level;
+  Queue queue;
+};
+
 class CommandBuffer {
 private:
   VkCommandBuffer handle;
   CommandPool *pool;
+  Queue queue;
 
-  CommandBuffer(CommandPool &pool, CommandBufferLevel level);
+  CommandBuffer(CommandBufferCreateInfo &create_info);
 
 public:
   CommandBuffer(CommandBuffer &) = delete;
@@ -27,8 +35,13 @@ public:
   ~CommandBuffer();
 
   VkCommandBuffer GetHandle();
+
+  void Reset();
   void Begin();
   void End();
+
+  void SoloExecute();
+
   void Dispose();
 
   friend class CommandPool;

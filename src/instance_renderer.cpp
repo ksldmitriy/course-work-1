@@ -8,6 +8,9 @@ InstanceRenderer::InstanceRenderer(InstanceRendererCreateInfo &create_info) {
   extent = create_info.extent;
   render_pass = create_info.render_pass;
 
+  image = create_info.texture;
+  image_view = make_unique<vk::ImageView>(device, image);
+
   Init();
 
   INFO("instance renderer created");
@@ -16,6 +19,8 @@ InstanceRenderer::InstanceRenderer(InstanceRendererCreateInfo &create_info) {
 void InstanceRenderer::Init() {
   CreateVertexInputBuffers();
   CreateUniformBuffer();
+
+  CreateTextureSampler();
 
   CreateDescriptorSetLayout();
   CreateDescriptorPool();
@@ -41,6 +46,9 @@ InstanceRenderer::~InstanceRenderer() {
   vertex_buffer_memory->Free();
   uniform_buffer_memory->Free();
 
+  vkDestroySampler(device->GetHandle(), texture_sampler, nullptr);
+  image_view->Destroy();
+
   vkDestroyDescriptorSetLayout(device->GetHandle(), descriptor_set_layout,
                                nullptr);
 
@@ -51,6 +59,21 @@ InstanceRenderer::~InstanceRenderer() {
   vkDestroyPipeline(device->GetHandle(), pipeline, nullptr);
 
   INFO("instance renderer destroyed");
+}
+
+void InstanceRenderer::CreateTextureSampler() {
+  VkSamplerAddressMode address_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+  VkSamplerCreateInfo create_info = vk::sampler_create_info_template;
+  create_info.addressModeU = address_mode;
+  create_info.addressModeV = address_mode;
+  create_info.addressModeW = address_mode;
+
+  VkResult result = vkCreateSampler(device->GetHandle(), &create_info, nullptr,
+                                    &texture_sampler);
+  if (result) {
+    throw vk::CriticalException("cant create texture sampler");
+  }
 }
 
 void InstanceRenderer::Render(uint32_t image_index,
@@ -341,7 +364,8 @@ void InstanceRenderer::CreateVertexInputBuffers() {
 
   uint32_t memory_type = physical_device.ChooseMemoryType(choose_info);
 
-  vector<vk::MemoryObject *> buffers = {vertex_buffer.get(), instance_buffer.get()};
+  vector<vk::MemoryObject *> buffers = {vertex_buffer.get(),
+                                        instance_buffer.get()};
 
   VkDeviceSize memory_size = vk::DeviceMemory::CalculateMemorySize(buffers);
 
@@ -363,20 +387,39 @@ void InstanceRenderer::CreateVertexInputBuffers() {
 }
 
 void InstanceRenderer::UpdateDescriptorSet() {
+  vector<VkWriteDescriptorSet> write_sets;
+
   VkDescriptorBufferInfo buffer_info;
   buffer_info.buffer = uniform_buffer->GetHandle();
   buffer_info.offset = 0;
   buffer_info.range = VK_WHOLE_SIZE;
 
-  VkWriteDescriptorSet write_set = vk::write_descriptor_set_template;
-  write_set.dstSet = descriptor_set;
-  write_set.dstBinding = 0;
-  write_set.dstArrayElement = 0;
-  write_set.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  write_set.descriptorCount = 1;
-  write_set.pBufferInfo = &buffer_info;
+  VkWriteDescriptorSet ubo_write_set = vk::write_descriptor_set_template;
+  ubo_write_set.dstSet = descriptor_set;
+  ubo_write_set.dstBinding = 0;
+  ubo_write_set.dstArrayElement = 0;
+  ubo_write_set.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  ubo_write_set.descriptorCount = 1;
+  ubo_write_set.pBufferInfo = &buffer_info;
 
-  vkUpdateDescriptorSets(device->GetHandle(), 1, &write_set, 0, nullptr);
+  write_sets.push_back(ubo_write_set);
+  
+  VkDescriptorImageInfo image_info;
+  image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+  image_info.imageView = image_view->GetHandle();
+  image_info.sampler = texture_sampler;
+
+  VkWriteDescriptorSet texture_write_set = vk::write_descriptor_set_template;
+  texture_write_set.dstSet = descriptor_set;
+  texture_write_set.dstBinding = 1;
+  texture_write_set.dstArrayElement = 0;
+  texture_write_set.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  texture_write_set.descriptorCount = 1;
+  texture_write_set.pImageInfo = &image_info;
+
+  write_sets.push_back(texture_write_set);
+
+  vkUpdateDescriptorSets(device->GetHandle(), write_sets.size(), write_sets.data(), 0, nullptr);
 
   TRACE("instance renderer descriptors set updated");
 }
@@ -398,14 +441,24 @@ void InstanceRenderer::AllocateDescriptorSet() {
 }
 
 void InstanceRenderer::CreateDescriptorPool() {
-  VkDescriptorPoolSize pool_size;
-  pool_size.descriptorCount = 1;
-  pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  vector<VkDescriptorPoolSize> pool_sizes;
+
+  VkDescriptorPoolSize ubo_pool_size;
+  ubo_pool_size.descriptorCount = 1;
+  ubo_pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+  pool_sizes.push_back(ubo_pool_size);
+
+  VkDescriptorPoolSize sampler_pool_size;
+  sampler_pool_size.descriptorCount = 1;
+  sampler_pool_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+
+  pool_sizes.push_back(sampler_pool_size);
 
   VkDescriptorPoolCreateInfo create_info =
       vk::descriptor_pool_create_info_template;
-  create_info.poolSizeCount = 1;
-  create_info.pPoolSizes = &pool_size;
+  create_info.poolSizeCount = pool_sizes.size();
+  create_info.pPoolSizes = pool_sizes.data();
   create_info.maxSets = 1;
 
   VkResult result = vkCreateDescriptorPool(device->GetHandle(), &create_info,
@@ -418,6 +471,8 @@ void InstanceRenderer::CreateDescriptorPool() {
 }
 
 void InstanceRenderer::CreateDescriptorSetLayout() {
+  vector<VkDescriptorSetLayoutBinding> bindings;
+
   VkDescriptorSetLayoutBinding ubo_layout_binding;
   ubo_layout_binding.binding = 0;
   ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -425,10 +480,22 @@ void InstanceRenderer::CreateDescriptorSetLayout() {
   ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
   ubo_layout_binding.pImmutableSamplers = nullptr;
 
+  bindings.push_back(ubo_layout_binding);
+
+  VkDescriptorSetLayoutBinding sampler_layout_binding;
+  sampler_layout_binding.binding = 1;
+  sampler_layout_binding.descriptorCount = 1;
+  sampler_layout_binding.descriptorType =
+      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  sampler_layout_binding.pImmutableSamplers = nullptr;
+  sampler_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+  bindings.push_back(sampler_layout_binding);
+
   VkDescriptorSetLayoutCreateInfo create_info =
       vk::descriptor_set_layout_create_info_template;
-  create_info.bindingCount = 1;
-  create_info.pBindings = &ubo_layout_binding;
+  create_info.bindingCount = bindings.size();
+  create_info.pBindings = bindings.data();
 
   VkResult result = vkCreateDescriptorSetLayout(
       device->GetHandle(), &create_info, nullptr, &descriptor_set_layout);

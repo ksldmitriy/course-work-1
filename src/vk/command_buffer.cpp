@@ -6,16 +6,17 @@
 
 namespace vk {
 
-CommandBuffer::CommandBuffer(CommandPool &pool, CommandBufferLevel level) {
-  this->pool = &pool;
+CommandBuffer::CommandBuffer(CommandBufferCreateInfo &create_info) {
+  this->pool = create_info.pool;
+  this->queue = create_info.queue;
 
   VkCommandBufferAllocateInfo allocate_info =
       command_buffer_allocate_info_template;
-  allocate_info.level = (VkCommandBufferLevel)level;
-  allocate_info.commandPool = pool.GetHandle();
+  allocate_info.level = (VkCommandBufferLevel)create_info.level;
+  allocate_info.commandPool = pool->GetHandle();
   allocate_info.commandBufferCount = 1;
 
-  VkResult result = vkAllocateCommandBuffers(pool.device->GetHandle(),
+  VkResult result = vkAllocateCommandBuffers(pool->device->GetHandle(),
                                              &allocate_info, &handle);
   if (result) {
     throw CriticalException("cant allocate command buffer");
@@ -31,6 +32,29 @@ CommandBuffer::~CommandBuffer() {
 }
 
 VkCommandBuffer CommandBuffer::GetHandle() { return handle; }
+
+void CommandBuffer::SoloExecute() {
+  VkPipelineStageFlags wait_dst_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+  VkSubmitInfo submit_info = vk::submit_info_template;
+  submit_info.commandBufferCount = 1;
+  submit_info.pCommandBuffers = &handle;
+
+  VkResult result =
+      vkQueueSubmit(queue.GetHandle(), 1, &submit_info, pool->solo_execute_fence);
+  if (result) {
+    throw vk::CriticalException("cant submit to queue");
+  }
+
+  vkWaitForFences(pool->device->GetHandle(), 1, &pool->solo_execute_fence, VK_TRUE,
+                  UINT64_MAX);
+
+  vkResetFences(pool->device->GetHandle(), 1, &pool->solo_execute_fence);
+  
+  TRACE("command pool solo executed");
+}
+
+void CommandBuffer::Reset() { vkResetCommandBuffer(handle, 0); }
 
 void CommandBuffer::Begin() {
   VkCommandBufferBeginInfo begin_info = vk::command_buffer_begin_info_template;

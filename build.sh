@@ -1,7 +1,7 @@
 #!/bin/bash
 
 rm debug-logs
-rm info-logs
+rm full-logs
 
 echo === CMAKE ===
 

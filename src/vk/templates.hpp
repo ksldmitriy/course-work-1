@@ -26,7 +26,6 @@ extern VkRenderPassCreateInfo render_pass_create_info_template;
 extern VkAttachmentDescription attachment_description_template;
 extern VkSubpassDescription subpass_description_template;
 extern VkImageViewCreateInfo image_view_create_info_template;
-extern VkImageSubresourceRange image_subresource_range_template;
 extern VkFramebufferCreateInfo framebuffer_create_info_template;
 extern VkPipelineVertexInputStateCreateInfo vertex_input_create_info_template;
 extern VkPipelineInputAssemblyStateCreateInfo
@@ -46,8 +45,14 @@ extern VkPipelineDynamicStateCreateInfo
 extern VkImageMemoryBarrier image_memory_barrier_template;
 extern VkRenderPassBeginInfo render_pass_begin_info_template;
 extern VkPresentInfoKHR present_info_template;
- 
+
+extern VkMemoryBarrier memory_barrier_template;
+
+extern VkImageSubresourceRange image_subresource_range_template;
+
 extern VkBufferCreateInfo buffer_create_info_template;
 extern VkImageCreateInfo image_create_info_template;
+
+extern VkSamplerCreateInfo sampler_create_info_template;
 
 } // namespace vk

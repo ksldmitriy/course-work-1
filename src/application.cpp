@@ -1,6 +1,10 @@
 #include "application.hpp"
 
 Application ::~Application() {
+  staging_command_buffer->Dispose();
+
+  command_pool->Dispose();
+
   instance_renderer.reset();
 
   vkDestroyRenderPass(device->GetHandle(), render_pass, nullptr);
@@ -50,6 +54,11 @@ void Application::Prepare() {
 
   CreateFramebuffers();
 
+  command_pool = make_unique<vk::CommandPool>(*device, graphics_queue, 1);
+
+  staging_command_buffer =
+      command_pool->AllocateCommandBuffer(vk::CommandBufferLevel::primary);
+
   CreateTextures();
 
   CreateInstanceRenderer();
@@ -60,14 +69,16 @@ void Application::Prepare() {
 }
 
 void Application::CreateTextures() {
+  // load car texture from file
   fs::path image_path = "car-texture.png";
 
-  // load car texture from file
   glm::ivec2 image_size;
   int image_channels;
   stbi_uc *image_data =
       stbi_load(image_path.c_str(), &image_size.x, &image_size.y,
                 &image_channels, STBI_rgb_alpha);
+
+  int image_size_in_bytes = image_size.x * image_size.y * 4;
 
   if (!image_data) {
     throw CriticalException("cant load texture " + image_path.string());
@@ -76,6 +87,7 @@ void Application::CreateTextures() {
   // create car image and its memory
   vk::ImageCreateInfo image_crate_info;
   image_crate_info.size = {10, 10};
+  image_crate_info.format = VK_FORMAT_R8G8B8A8_SRGB;
 
   car_image = make_unique<vk::Image>(*device, image_crate_info);
 
@@ -97,6 +109,39 @@ void Application::CreateTextures() {
 
   car_image_memory->BindImage(*car_image);
 
+  // load data to image
+  vk::StagingBufferCreateInfo staging_buffer_create_info;
+  staging_buffer_create_info.command_buffer = staging_command_buffer.get();
+  staging_buffer_create_info.queue = graphics_queue;
+  staging_buffer_create_info.size = image_size_in_bytes;
+
+  unique_ptr<vk::StagingBuffer> staging_buffer =
+      make_unique<vk::StagingBuffer>(*device, staging_buffer_create_info);
+
+  staging_command_buffer->Begin();
+
+  staging_buffer->LoadData(span<char>((char *)image_data, image_size_in_bytes));
+
+  vk::SrcImageBarrier src_barrier;
+
+  vk::SrcImageBarrier afterload_src_barrier =
+      staging_buffer->CopyToImage(car_image.get(), src_barrier);
+
+  car_image->ChangeLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+  vk::DstImageBarrier afterload_dst_barrier;
+  afterload_dst_barrier.access = VK_ACCESS_SHADER_READ_BIT;
+  afterload_dst_barrier.layout = car_image->GetLayout();
+  afterload_dst_barrier.stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+
+  vk::ImageBarrier afterload_barrier(*car_image, afterload_src_barrier,
+                                     afterload_dst_barrier);
+  afterload_barrier.Set(*staging_command_buffer);
+
+  staging_command_buffer->End();
+
+  staging_command_buffer->SoloExecute();
+
   DEBUG("textures created");
 }
 
@@ -107,6 +152,7 @@ void Application::CreateInstanceRenderer() {
   create_info.framebuffers = framebuffers;
   create_info.extent = swapchain->GetExtent();
   create_info.render_pass = render_pass;
+  create_info.texture = car_image.get();
 
   instance_renderer = make_unique<InstanceRenderer>(create_info);
 }
