@@ -13,7 +13,7 @@ ImageView::ImageView(Device *device, Image *image) {
   create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
   create_info.format = image->GetFormat();
   create_info.subresourceRange = subresource_range;
-
+  
   VkResult result =
       vkCreateImageView(device->GetHandle(), &create_info, nullptr, &handle);
   if (result) {

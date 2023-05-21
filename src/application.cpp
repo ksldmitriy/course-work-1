@@ -86,7 +86,7 @@ void Application::CreateTextures() {
 
   // create car image and its memory
   vk::ImageCreateInfo image_crate_info;
-  image_crate_info.size = {10, 10};
+  image_crate_info.size = image_size;
   image_crate_info.format = VK_FORMAT_R8G8B8A8_SRGB;
 
   car_image = make_unique<vk::Image>(*device, image_crate_info);
@@ -121,6 +121,8 @@ void Application::CreateTextures() {
   staging_command_buffer->Begin();
 
   staging_buffer->LoadData(span<char>((char *)image_data, image_size_in_bytes));
+
+  stbi_image_free(image_data);
 
   vk::SrcImageBarrier src_barrier;
 
