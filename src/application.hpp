@@ -8,6 +8,7 @@
 #include <stb_image.h>
 
 #include "instance_renderer.hpp"
+#include "camera.hpp"
 #include "vk/vulkan.hpp"
 
 chrono::high_resolution_clock::time_point typedef time_point;
@@ -42,9 +43,8 @@ private:
 
   vk::Queue graphics_queue;
 
-  unique_ptr<vk::DeviceMemory> car_image_memory;
-  unique_ptr<vk::Image> car_image;
-
+  unique_ptr<vk::Texture> car_texture;
+  
   vector<VkFramebuffer> framebuffers;
 
   void InitVulkan();

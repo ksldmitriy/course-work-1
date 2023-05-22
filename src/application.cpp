@@ -15,9 +15,7 @@ Application ::~Application() {
 
   swapchain->Dispose();
 
-  car_image->Destroy();
-
-  car_image_memory->Free();
+  car_texture->Destroy();
 
   device->Dispose();
 
@@ -69,80 +67,23 @@ void Application::Prepare() {
 }
 
 void Application::CreateTextures() {
-  // load car texture from file
   fs::path image_path = "car-texture.png";
 
   glm::ivec2 image_size;
   int image_channels;
+
   stbi_uc *image_data =
       stbi_load(image_path.c_str(), &image_size.x, &image_size.y,
                 &image_channels, STBI_rgb_alpha);
-
-  int image_size_in_bytes = image_size.x * image_size.y * 4;
-
   if (!image_data) {
     throw CriticalException("cant load texture " + image_path.string());
   }
 
-  // create car image and its memory
-  vk::ImageCreateInfo image_crate_info;
-  image_crate_info.size = image_size;
-  image_crate_info.format = VK_FORMAT_R8G8B8A8_SRGB;
-
-  car_image = make_unique<vk::Image>(*device, image_crate_info);
-
-  vector<vk::MemoryObject *> memory_objects = {car_image.get()};
-  VkDeviceSize memory_size =
-      vk::DeviceMemory::CalculateMemorySize(memory_objects);
-
-  vk::PhysicalDevice &physical_device = device->GetPhysicalDevice();
-
-  vk::ChooseMemoryTypeInfo choose_info;
-  choose_info.memory_types = car_image->GetMemoryTypes();
-  choose_info.heap_properties = 0;
-  choose_info.properties = 0;
-
-  uint32_t memory_type = physical_device.ChooseMemoryType(choose_info);
-
-  car_image_memory =
-      make_unique<vk::DeviceMemory>(*device, memory_size, memory_type);
-
-  car_image_memory->BindImage(*car_image);
-
-  // load data to image
-  vk::StagingBufferCreateInfo staging_buffer_create_info;
-  staging_buffer_create_info.command_buffer = staging_command_buffer.get();
-  staging_buffer_create_info.queue = graphics_queue;
-  staging_buffer_create_info.size = image_size_in_bytes;
-
-  unique_ptr<vk::StagingBuffer> staging_buffer =
-      make_unique<vk::StagingBuffer>(*device, staging_buffer_create_info);
-
-  staging_command_buffer->Begin();
-
-  staging_buffer->LoadData(span<char>((char *)image_data, image_size_in_bytes));
+  car_texture = make_unique<vk::Texture>(device.get());
+  car_texture->LoadImage((char *)image_data, image_size,
+                         staging_command_buffer.get(), graphics_queue);
 
   stbi_image_free(image_data);
-
-  vk::SrcImageBarrier src_barrier;
-
-  vk::SrcImageBarrier afterload_src_barrier =
-      staging_buffer->CopyToImage(car_image.get(), src_barrier);
-
-  car_image->ChangeLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-  vk::DstImageBarrier afterload_dst_barrier;
-  afterload_dst_barrier.access = VK_ACCESS_SHADER_READ_BIT;
-  afterload_dst_barrier.layout = car_image->GetLayout();
-  afterload_dst_barrier.stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-
-  vk::ImageBarrier afterload_barrier(*car_image, afterload_src_barrier,
-                                     afterload_dst_barrier);
-  afterload_barrier.Set(*staging_command_buffer);
-
-  staging_command_buffer->End();
-
-  staging_command_buffer->SoloExecute();
 
   DEBUG("textures created");
 }
@@ -156,14 +97,14 @@ void Application::CreateInstanceRenderer() {
   create_info.framebuffers = framebuffers;
   create_info.extent = swapchain->GetExtent();
   create_info.render_pass = render_pass;
-  create_info.texture = car_image.get();
+  create_info.texture = car_texture->CreateImageView();
 
   create_info.sprite_size = glm::fvec2(0.56, 1) / 3.0f;
 
   instance_renderer = make_unique<InstanceRenderer>(create_info);
 
   vector<Transforn2D> sprites(total_sprites);
-  
+
   for (int i = 0; i < total_sprites; i++) {
     Transforn2D sprite;
     sprite.pos.x = -1 + (2.0 / total_sprites) * i;
@@ -175,7 +116,11 @@ void Application::CreateInstanceRenderer() {
 
   instance_renderer->LoadSprites(sprites);
 
-  instance_renderer->SetCamera({0.3, 0.3}, 0.5);
+  Camera camera;
+  camera.pos = {0, 0};
+  camera.scale = 1;
+
+  instance_renderer->SetCamera(camera);
 }
 
 void Application::CreateSyncObjects() {

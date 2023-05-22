@@ -2,6 +2,7 @@
 #include "render_structs.hpp"
 #include "vk/vulkan.hpp"
 #include <memory>
+#include "camera.hpp"
 
 struct InstanceRendererCreateInfo {
   vk::Device *device;
@@ -12,7 +13,7 @@ struct InstanceRendererCreateInfo {
   VkRenderPass render_pass;
 
   glm::fvec2 sprite_size;
-  vk::Image* texture;
+  unique_ptr<vk::ImageView> texture;
 };
 
 class InstanceRenderer {
@@ -23,7 +24,6 @@ private:
   unique_ptr<vk::DeviceMemory> vertex_buffer_memory, instance_buffer_memory, uniform_buffer_memory;
   unique_ptr<vk::Buffer> vertex_buffer, instance_buffer, uniform_buffer;
 
-  vk::Image* texture;
   unique_ptr<vk::ImageView> texture_view;
   VkSampler texture_sampler;
   
@@ -61,7 +61,7 @@ private:
   void CreateInstanceBuffers(size_t size);
   
   void CreatePipeline(VkExtent2D extent, VkRenderPass render_pass);
-  void CreateCommandBuffer();
+  void CreateCommandBuffers();
 
   void Init();
 public:
@@ -71,7 +71,7 @@ public:
   void Render(uint32_t image_index, VkSemaphore image_available_semaphore,
               VkSemaphore render_finished_semaphore, VkFence fence);
 
-  void SetCamera(glm::fvec2 pos, float scale);
+  void SetCamera(Camera camera);
   
   void LoadSprites(vector<Transforn2D>& sprites);
 };

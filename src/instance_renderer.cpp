@@ -8,8 +8,7 @@ InstanceRenderer::InstanceRenderer(InstanceRendererCreateInfo &create_info) {
   extent = create_info.extent;
   render_pass = create_info.render_pass;
 
-  texture = create_info.texture;
-  texture_view = make_unique<vk::ImageView>(device, texture);
+  texture_view = move(create_info.texture);
 
   sprite_size = create_info.sprite_size;
   sprites_count = 0;
@@ -25,7 +24,6 @@ void InstanceRenderer::Init() {
   CreateInstanceBuffers(sprites_capacity);
 
   CreateUniformBuffer();
-  SetCamera({0, 0}, 1);
 
   CreateTextureSampler();
 
@@ -36,16 +34,16 @@ void InstanceRenderer::Init() {
 
   CreatePipeline(extent, render_pass);
 
-  CreateCommandBuffer();
+  CreateCommandBuffers();
 }
 
-void InstanceRenderer::SetCamera(glm::fvec2 pos, float scale) {
+void InstanceRenderer::SetCamera(Camera camera) {
   UniformData *uniform_data = (UniformData *)uniform_buffer->Map();
 
-  uniform_data->pos = pos;
+  uniform_data->pos = camera.pos;
   float screen_ratio = extent.height / (float)extent.width;
   uniform_data->scale = {screen_ratio, 1};
-  uniform_data->scale *= scale;
+  uniform_data->scale *= camera.scale;
 
   uniform_buffer->Flush();
   uniform_buffer->Unmap();
@@ -70,7 +68,7 @@ void InstanceRenderer::LoadSprites(vector<Transforn2D> &sprites) {
 
   TRACE("instance renderer sprites loaded");
 
-  CreateCommandBuffer();
+  CreateCommandBuffers();
 }
 
 InstanceRenderer::~InstanceRenderer() {
@@ -141,7 +139,7 @@ void InstanceRenderer::Render(uint32_t image_index,
   }
 }
 
-void InstanceRenderer::CreateCommandBuffer() {
+void InstanceRenderer::CreateCommandBuffers() {
   if (!command_pool) {
     command_pool =
         make_unique<vk::CommandPool>(*device, queue, framebuffers.size());

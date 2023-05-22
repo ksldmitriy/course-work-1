@@ -15,6 +15,7 @@
 
 #include "image.hpp"
 #include "image_view.hpp"
+#include "texture.hpp"
 
 #include "buffer.hpp"
 #include "staging_buffer.hpp"
