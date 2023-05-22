@@ -42,12 +42,12 @@ InstanceData::GetAttributeDescriptions(uint32_t binding, uint32_t &location) {
   attribute_descriptions[0].binding = binding;
   attribute_descriptions[0].location = location++;
   attribute_descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-  attribute_descriptions[0].offset = offsetof(InstanceData, pos);
+  attribute_descriptions[0].offset = offsetof(Transforn2D, pos);
  
   attribute_descriptions[1].binding = binding;
   attribute_descriptions[1].location = location++;
   attribute_descriptions[1].format = VK_FORMAT_R32_SFLOAT;
-  attribute_descriptions[1].offset = offsetof(InstanceData, rot);
+  attribute_descriptions[1].offset = offsetof(Transforn2D, rot);
 
   return attribute_descriptions;
 }

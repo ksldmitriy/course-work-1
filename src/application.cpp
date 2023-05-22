@@ -162,10 +162,10 @@ void Application::CreateInstanceRenderer() {
 
   instance_renderer = make_unique<InstanceRenderer>(create_info);
 
-  vector<InstanceData> sprites(total_sprites);
+  vector<Transforn2D> sprites(total_sprites);
   
   for (int i = 0; i < total_sprites; i++) {
-    InstanceData sprite;
+    Transforn2D sprite;
     sprite.pos.x = -1 + (2.0 / total_sprites) * i;
     sprite.pos.y = 0;
     sprite.rot = 0;

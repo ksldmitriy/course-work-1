@@ -73,5 +73,5 @@ public:
 
   void SetCamera(glm::fvec2 pos, float scale);
   
-  void LoadSprites(vector<InstanceData>& sprites);
+  void LoadSprites(vector<Transforn2D>& sprites);
 };

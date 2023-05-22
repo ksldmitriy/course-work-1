@@ -2,6 +2,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <vulkan/vulkan.h>
+#include "transform.hpp"
 
 using namespace std;
 
@@ -16,8 +17,7 @@ struct Vertex {
 };
 
 struct InstanceData {
-  glm::fvec2 pos;
-  float rot;
+  Transforn2D transform;
 
   static VkVertexInputBindingDescription
   GetBindingDescription(uint32_t binding);

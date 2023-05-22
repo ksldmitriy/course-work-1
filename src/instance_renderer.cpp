@@ -51,7 +51,7 @@ void InstanceRenderer::SetCamera(glm::fvec2 pos, float scale) {
   uniform_buffer->Unmap();
 }
 
-void InstanceRenderer::LoadSprites(vector<InstanceData> &sprites) {
+void InstanceRenderer::LoadSprites(vector<Transforn2D> &sprites) {
   size_t optimal_capacity = GetOptimalSpritesCapacity(sprites.size());
   if (optimal_capacity != sprites_capacity) {
     CreateInstanceBuffers(optimal_capacity);
