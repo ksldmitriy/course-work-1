@@ -17,14 +17,30 @@ file(GLOB vulkan_test_SRC *.cpp vk/*.cpp)
 list(FILTER vulkan_test_SRC EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/\#*.cpp)
 list(FILTER vulkan_test_SRC EXCLUDE REGEX ${CMAKE_SOURCE_DIR}/*/\#*.cpp)
 
-add_executable(${PROJECT_NAME} ${vulkan_test_SRC}) 
+add_executable(${PROJECT_NAME} ${vulkan_test_SRC})
 
-# libs
+target_include_directories(${PROJECT_NAME} PRIVATE ../libs/imgui)
+
+#libs
 
 link_directories(/usr/lib)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE libvulkan.so libglfw.so)
 
 add_subdirectory(../libs/spdlog ${CMAKE_CURRENT_BINARY_DIR}/spdlog)
-target_link_libraries(${PROJECT_NAME} PRIVATE spdlog)
 
+
+add_library(imgui STATIC
+  ../libs/imgui/imgui.cpp
+  ../libs/imgui/imgui_draw.cpp
+  ../libs/imgui/imgui_demo.cpp
+  ../libs/imgui/imgui_tables.cpp
+  ../libs/imgui/imgui_widgets.cpp
+
+  ../libs/imgui/backends/imgui_impl_glfw.cpp
+  ../libs/imgui/backends/imgui_impl_vulkan.cpp
+)
+
+target_include_directories(imgui PRIVATE ../libs/imgui)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog imgui)
