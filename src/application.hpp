@@ -7,19 +7,26 @@
 
 #include <stb_image.h>
 
-#include "instance_renderer.hpp"
 #include "camera.hpp"
+#include "instance_renderer.hpp"
 #include "vk/vulkan.hpp"
 
 #include "vulkan_application.hpp"
 
 using namespace std;
 
-class Application :protected VulkanApplication{
+class Application : protected VulkanApplication {
 private:
+  unique_ptr<Window> window;
+
+  time_point program_start;
+  duration time_from_start;
 
   void Prepare();
   void RenderLoop();
+
+  void ChangeSurface();
+
 public:
   Application() = default;
   Application(Application &) = delete;

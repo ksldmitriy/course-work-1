@@ -1,31 +1,19 @@
 #include "application.hpp"
 
 Application ::~Application() {
-  staging_command_buffer->Dispose();
-
-  command_pool->Dispose();
-
-  instance_renderer.reset();
-
-  vkDestroyRenderPass(device->GetHandle(), render_pass, nullptr);
-
-  CleanupFramebuffers();
-
-  CleanupSyncObjects();
-
-  swapchain->Dispose();
-
-  car_texture->Destroy();
-
-  device->Dispose();
-
+  PreDestructor();
   INFO("application destroyed");
 }
 
 void Application::Run() {
   window = unique_ptr<Window>(new Window());
 
-  InitVulkan();
+  uint32_t glfw_extensions_count;
+  const char **glfw_extensions;
+
+  window->GetInstanceExtensions(glfw_extensions, glfw_extensions_count);
+
+  InitVulkan(glfw_extensions_count, glfw_extensions);
 
   window->AttachInstance(*instance);
 
@@ -44,7 +32,6 @@ void Application::RenderLoop() {
   DEBUG("render loop launched");
 
   while (!window->ShouldClose()) {
-    Update();
 
     try {
       Draw();
@@ -58,4 +45,16 @@ void Application::RenderLoop() {
   }
 
   DEBUG("render loop exit");
+}
+
+void Application::ChangeSurface() {
+
+  vkDeviceWaitIdle(device->GetHandle());
+
+  swapchain.reset();
+
+  window->DestroySurface();
+  window->CreateSurface();
+
+  VulkanApplication::ChangeSurface(window->GetSurface());
 }

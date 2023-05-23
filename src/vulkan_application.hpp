@@ -23,23 +23,31 @@ private:
   void CreateFramebuffers();
   void CreateSyncObjects();
 
-
-protected:
-  time_point program_start;
-  duration time_from_start;
-
-  unique_ptr<InstanceRenderer> instance_renderer;
+  VkSemaphore image_available_semaphore, render_finished_semaphore;
+  VkFence fence;
 
   unique_ptr<vk::CommandPool> command_pool;
   unique_ptr<vk::CommandBuffer> staging_command_buffer;
 
+  void Render(uint32_t next_image_index);
+  void Present(uint32_t next_image_index);
+
+  void CleanupSyncObjects();
+  void CleanupFramebuffers();
+
+  vector<VkFramebuffer> framebuffers;
+
+  void CreateInstanceRenderer();
+
+  void CreateInstance(uint32_t glfw_extensions_count,
+                      const char **glfw_extensions);
+  void CreateDevice();
+
+protected:
   unique_ptr<vk::Instance> instance;
   unique_ptr<vk::Device> device;
 
-  VkSemaphore image_available_semaphore, render_finished_semaphore;
-  VkFence fence;
-
-  unique_ptr<Window> window;
+  unique_ptr<InstanceRenderer> instance_renderer;
 
   unique_ptr<vk::Swapchain> swapchain;
 
@@ -49,30 +57,16 @@ protected:
 
   unique_ptr<vk::Texture> car_texture;
 
-  vector<VkFramebuffer> framebuffers;
-
-  void InitVulkan();
-
+  void InitVulkan(uint32_t glfw_extensions_count, const char **glfw_extensions);
   void Prepare();
+
   void Draw();
-  void Render(uint32_t next_image_index);
-  void Present(uint32_t next_image_index);
-  void CreateInstanceRenderer();
 
-  void ChangeSurface();
-  void CleanupSyncObjects();
-  void CleanupFramebuffers();
-
-  void PreUpdate();
-  void Update();
-  void UpdateRenderData();
-
-
-  void CreateInstance();
-  void CreateDevice();
-
+  void ChangeSurface(VkSurfaceKHR surface);
 
   void CreateTextures();
+
+  void PreDestructor();
 
 public:
   VulkanApplication();

@@ -10,11 +10,15 @@ InstanceRenderer::InstanceRenderer(InstanceRendererCreateInfo &create_info) {
 
   texture_view = move(create_info.texture);
 
-  sprite_size = create_info.sprite_size;
+  settings = create_info.settings;
+
   sprites_count = 0;
   sprites_capacity = GetOptimalSpritesCapacity(0);
 
   Init();
+
+  ApplyCameraSettings();
+  ApplySpriteSizeSettings();
 
   INFO("instance renderer created");
 }
@@ -38,16 +42,56 @@ void InstanceRenderer::Init() {
 }
 
 void InstanceRenderer::SetCamera(Camera camera) {
+  settings.camera = camera;
+  ApplyCameraSettings();
+}
+
+void InstanceRenderer::SetSpriteSize(glm::fvec2 sprite_size) {
+  settings.sprite_size = sprite_size;
+  ApplySpriteSizeSettings();
+}
+
+void InstanceRenderer::ApplyCameraSettings() {
   UniformData *uniform_data = (UniformData *)uniform_buffer->Map();
 
-  uniform_data->pos = camera.pos;
+  uniform_data->pos = settings.camera.pos;
+  uniform_data->pos.y *= -1;
   float screen_ratio = extent.height / (float)extent.width;
   uniform_data->scale = {screen_ratio, 1};
-  uniform_data->scale *= camera.scale;
+  uniform_data->scale *= settings.camera.scale;
 
   uniform_buffer->Flush();
   uniform_buffer->Unmap();
+
+  TRACE("instance renderer camera settings applied");
 }
+
+void InstanceRenderer::ApplySpriteSizeSettings() {
+  Vertex unique_vertices[4] = {{{0.5f, 0.5f}, {1.0f, 1.0f}},
+                               {{0.5f, -0.5f}, {1.0f, 0.0f}},
+                               {{-0.5f, -0.5f}, {0.0f, 0.0f}},
+                               {{-0.5f, 0.5f}, {0.0f, 1.0f}}};
+
+  for (auto &v : unique_vertices) {
+    v.pos.x *= settings.sprite_size.x;
+    v.pos.y *= settings.sprite_size.y;
+  }
+
+  Vertex vertices[6] = {unique_vertices[0], unique_vertices[1],
+                        unique_vertices[2], unique_vertices[0],
+                        unique_vertices[2], unique_vertices[3]};
+
+  char *mapped_memory = (char *)vertex_buffer->Map();
+
+  memcpy(mapped_memory, (char *)vertices, sizeof(vertices));
+
+  vertex_buffer->Flush();
+  vertex_buffer->Unmap();
+
+  TRACE("instance renderer sprite size applied");
+}
+
+InstanceRendererSettings InstanceRenderer::GetSettings() { return settings; }
 
 void InstanceRenderer::LoadSprites(vector<Transforn2D> &sprites) {
   size_t optimal_capacity = GetOptimalSpritesCapacity(sprites.size());
@@ -411,24 +455,10 @@ void InstanceRenderer::CreateInstanceBuffers(size_t size) {
 }
 
 void InstanceRenderer::CreateVertexBuffer() {
-  Vertex unique_vertices[4] = {{{0.5f, 0.5f}, {1.0f, 1.0f}},
-                               {{0.5f, -0.5f}, {1.0f, 0.0f}},
-                               {{-0.5f, -0.5f}, {0.0f, 0.0f}},
-                               {{-0.5f, 0.5f}, {0.0f, 1.0f}}};
-
-  for (auto &v : unique_vertices) {
-    v.pos.x *= sprite_size.x;
-    v.pos.y *= sprite_size.y;
-  }
-
-  Vertex vertices[6] = {unique_vertices[0], unique_vertices[1],
-                        unique_vertices[2], unique_vertices[0],
-                        unique_vertices[2], unique_vertices[3]};
-
   // create buffers
   vk::BufferCreateInfo create_info;
   create_info.queue = queue;
-  create_info.size = sizeof(vertices);
+  create_info.size = sizeof(Vertex) * 6;
   create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
   vertex_buffer = make_unique<vk::Buffer>(*device, create_info);
@@ -451,14 +481,6 @@ void InstanceRenderer::CreateVertexBuffer() {
       make_unique<vk::DeviceMemory>(*device, memory_size, memory_type);
 
   vertex_buffer_memory->BindBuffer(*vertex_buffer);
-
-  // load data
-  char *mapped_memory = (char *)vertex_buffer->Map();
-
-  memcpy(mapped_memory, (char *)vertices, sizeof(vertices));
-
-  vertex_buffer->Flush();
-  vertex_buffer->Unmap();
 
   TRACE("instance renderer vertex buffer created");
 }

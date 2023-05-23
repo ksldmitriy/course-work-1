@@ -2,10 +2,29 @@
 
 VulkanApplication::VulkanApplication() {}
 
-VulkanApplication::~VulkanApplication() {}
+VulkanApplication::~VulkanApplication() {
+  staging_command_buffer->Dispose();
 
-void VulkanApplication::InitVulkan() {
-  CreateInstance();
+  command_pool->Dispose();
+
+  instance_renderer.reset();
+
+  vkDestroyRenderPass(device->GetHandle(), render_pass, nullptr);
+
+  CleanupFramebuffers();
+
+  CleanupSyncObjects();
+
+  car_texture->Destroy();
+
+  device->Dispose();
+}
+
+void VulkanApplication::PreDestructor() { swapchain->Dispose(); }
+
+void VulkanApplication::InitVulkan(uint32_t glfw_extensions_count,
+                                   const char **glfw_extensions) {
+  CreateInstance(glfw_extensions_count, glfw_extensions);
 
   CreateDevice();
 
@@ -26,8 +45,6 @@ void VulkanApplication::Prepare() {
   CreateTextures();
 
   CreateInstanceRenderer();
-
-  program_start = now();
 
   DEBUG("vulkan application prepared");
 }
@@ -52,41 +69,6 @@ void VulkanApplication::CreateTextures() {
   stbi_image_free(image_data);
 
   DEBUG("textures created");
-}
-
-void VulkanApplication::CreateInstanceRenderer() {
-  const int total_sprites = 7;
-
-  InstanceRendererCreateInfo create_info;
-  create_info.device = device.get();
-  create_info.queue = graphics_queue;
-  create_info.framebuffers = framebuffers;
-  create_info.extent = swapchain->GetExtent();
-  create_info.render_pass = render_pass;
-  create_info.texture = car_texture->CreateImageView();
-
-  create_info.sprite_size = glm::fvec2(0.56, 1) / 3.0f;
-
-  instance_renderer = make_unique<InstanceRenderer>(create_info);
-
-  vector<Transforn2D> sprites(total_sprites);
-
-  for (int i = 0; i < total_sprites; i++) {
-    Transforn2D sprite;
-    sprite.pos.x = -1 + (2.0 / total_sprites) * i;
-    sprite.pos.y = 0;
-    sprite.rot = 0;
-
-    sprites[i] = sprite;
-  }
-
-  instance_renderer->LoadSprites(sprites);
-
-  Camera camera;
-  camera.pos = {0, 0};
-  camera.scale = 1;
-
-  instance_renderer->SetCamera(camera);
 }
 
 void VulkanApplication::CreateSyncObjects() {
@@ -126,16 +108,8 @@ void VulkanApplication::CleanupSyncObjects() {
   vkDestroyFence(device->GetHandle(), fence, nullptr);
 }
 
-
-void VulkanApplication::ChangeSurface() {
-  vkDeviceWaitIdle(device->GetHandle());
-
-  swapchain.reset();
-
-  window->DestroySurface();
-  window->CreateSurface();
-
-  swapchain = make_unique<vk::Swapchain>(*device, window->GetSurface());
+void VulkanApplication::ChangeSurface(VkSurfaceKHR surface) {
+  swapchain = make_unique<vk::Swapchain>(*device, surface);
 
   CleanupSyncObjects();
   CreateSyncObjects();
@@ -146,15 +120,37 @@ void VulkanApplication::ChangeSurface() {
   CreateInstanceRenderer();
 }
 
-void VulkanApplication::PreUpdate() { time_from_start = now() - program_start; }
+void VulkanApplication::CreateInstanceRenderer() {
+  const int total_sprites = 7;
 
-void VulkanApplication::Update() {
-  return;
-  PreUpdate();
-  UpdateRenderData();
+  InstanceRendererSettings settings;
+  settings.camera = {{0, 0}, 1};
+  settings.sprite_size = glm::fvec2(0.56, 1) / 3.0f;
+
+  InstanceRendererCreateInfo create_info;
+  create_info.device = device.get();
+  create_info.queue = graphics_queue;
+  create_info.framebuffers = framebuffers;
+  create_info.extent = swapchain->GetExtent();
+  create_info.render_pass = render_pass;
+  create_info.texture = car_texture->CreateImageView();
+  create_info.settings = settings;
+
+  instance_renderer = make_unique<InstanceRenderer>(create_info);
+
+  vector<Transforn2D> sprites(total_sprites);
+
+  for (int i = 0; i < total_sprites; i++) {
+    Transforn2D sprite;
+    sprite.pos.x = -1 + (2.0 / total_sprites) * i;
+    sprite.pos.y = 0;
+    sprite.rot = 0;
+
+    sprites[i] = sprite;
+  }
+
+  instance_renderer->LoadSprites(sprites);
 }
-
-void VulkanApplication::UpdateRenderData() {}
 
 void VulkanApplication::Draw() {
   uint32_t next_image_index =
@@ -252,15 +248,12 @@ void VulkanApplication::CreateRenderPass() {
   DEBUG("render pass created");
 }
 
-void VulkanApplication::CreateInstance() {
+void VulkanApplication::CreateInstance(uint32_t glfw_extensions_count,
+                                       const char **glfw_extensions) {
   vk::InstanceCreateInfo create_info;
 
   create_info.layers.push_back("VK_LAYER_KHRONOS_validation");
   create_info.extensions.push_back("VK_EXT_debug_utils");
-
-  uint32_t glfw_extensions_count;
-  const char **glfw_extensions;
-  window->GetInstanceExtensions(glfw_extensions, glfw_extensions_count);
 
   for (int i = 0; i < glfw_extensions_count; i++) {
     create_info.extensions.push_back(glfw_extensions[i]);
