@@ -8,6 +8,7 @@
 #include <stb_image.h>
 
 #include "camera.hpp"
+#include "imgui_renderer.hpp"
 #include "instance_renderer.hpp"
 #include "vk/vulkan.hpp"
 
@@ -19,11 +20,14 @@ using namespace std;
 
 class VulkanApplication {
 private:
-  void CreateRenderPass();
+  void CreateFirstRenderPass();
+  void CreateImguiRenderPass();
+
   void CreateFramebuffers();
   void CreateSyncObjects();
 
-  VkSemaphore image_available_semaphore, render_finished_semaphore;
+  unique_ptr<vk::Semaphore> image_available_semaphore,
+      cars_render_finished_semaphore, imgui_render_finished_semaphore;
   VkFence fence;
 
   unique_ptr<vk::CommandPool> command_pool;
@@ -35,23 +39,24 @@ private:
   void CleanupSyncObjects();
   void CleanupFramebuffers();
 
-  vector<VkFramebuffer> framebuffers;
-
-  void CreateInstanceRenderer();
-
   void CreateInstance(uint32_t glfw_extensions_count,
                       const char **glfw_extensions);
   void CreateDevice();
 
 protected:
+  unique_ptr<Window> window;
+
+  vector<VkFramebuffer> framebuffers;
+
   unique_ptr<vk::Instance> instance;
   unique_ptr<vk::Device> device;
 
   unique_ptr<InstanceRenderer> instance_renderer;
+  unique_ptr<ImguiRenderer> imgui_renderer;
 
   unique_ptr<vk::Swapchain> swapchain;
 
-  VkRenderPass render_pass;
+  VkRenderPass first_render_pass, imgui_render_pass;
 
   vk::Queue graphics_queue;
 
@@ -64,9 +69,10 @@ protected:
 
   void ChangeSurface(VkSurfaceKHR surface);
 
-  void CreateTextures();
+  void CreateInstanceRenderer();
+  void CreateImguiRenderer();
 
-  void PreDestructor();
+  void CreateTextures();
 
 public:
   VulkanApplication();

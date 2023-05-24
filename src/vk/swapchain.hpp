@@ -18,7 +18,10 @@ private:
 
   VkSurfaceFormatKHR format;
   VkExtent2D extent;
+  VkPresentModeKHR present_mode;
 
+  uint32_t min_image_count;
+  
   vector<VkImage> images;
   vector<VkImageView> image_views;
 
@@ -46,10 +49,13 @@ public:
   Swapchain &operator=(Swapchain &) = delete;
 
   void Dispose();
+
   VkSwapchainKHR GetHandle();
+  uint32_t GetMinImageCount();
   uint32_t AcquireNextImage(VkSemaphore semaphore);
   VkSurfaceFormatKHR GetFormat();
   VkExtent2D GetExtent();
+  VkPresentModeKHR GetPresentMode();
   const vector<VkImage>& GetImages();
   const vector<VkImageView>& GetImageViews();
 };

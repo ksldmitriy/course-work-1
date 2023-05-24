@@ -77,6 +77,8 @@ private:
 
 public:
   InstanceRenderer(InstanceRendererCreateInfo &create_info);
+  InstanceRenderer(InstanceRenderer &) = delete;
+  InstanceRenderer operator=(InstanceRenderer &) = delete;
   ~InstanceRenderer();
 
   void Render(uint32_t image_index, VkSemaphore image_available_semaphore,

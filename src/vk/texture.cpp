@@ -10,14 +10,15 @@ void Texture::Destroy() {
   if (image) {
     image->Destroy();
     image.reset();
+    TRACE("texture image destoyed");
   }
 
-  if(memory){
-	memory->Free();
-	memory.reset();
+  if (memory) {
+    memory->Free();
+    memory.reset();
+
+    TRACE("texture memory destoyed");
   }
-  
-  TRACE("texture destoyed");
 }
 
 void Texture::LoadImage(char *image_data, glm::ivec2 image_size,

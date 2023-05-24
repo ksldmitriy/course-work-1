@@ -15,6 +15,8 @@ Swapchain::Swapchain(Device &device, VkSurfaceKHR surface) {
   vector<VkSurfaceFormatKHR> supported_formats =
       physical_device.GetSurfaceFormats(surface);
 
+  min_image_count = surface_capabilities.minImageCount;
+
   // choose swapchain details
   ChooseSurfaceFormat(supported_formats);
 
@@ -117,7 +119,7 @@ void Swapchain::GenerateCreateInfo(PhysicalDevice &physical_device,
   vector<VkPresentModeKHR> supported_present_modes =
       physical_device.GetSurfacePresentModes(surface);
 
-  VkPresentModeKHR present_mode = ChoosePresentMode(supported_present_modes);
+  present_mode = ChoosePresentMode(supported_present_modes);
 
   VkSurfaceTransformFlagBitsKHR surface_transform =
       ChooseSurfaceTransform(capabilities);
@@ -136,6 +138,10 @@ void Swapchain::GenerateCreateInfo(PhysicalDevice &physical_device,
   create_info.clipped = VK_TRUE;
   create_info.oldSwapchain = nullptr;
 }
+
+VkPresentModeKHR Swapchain::GetPresentMode() { return present_mode; }
+
+uint32_t Swapchain::GetMinImageCount() { return min_image_count; }
 
 void Swapchain::GetImagesFromDevice(Device &device) {
   VkResult result;
@@ -200,11 +206,18 @@ void Swapchain::ChooseSurfaceFormat(
     return;
   }
 
-  for (const auto &format : supported_formats) {
-    if (format.format == VK_FORMAT_R8G8B8A8_UNORM) {
-      this->format = format;
-      return;
-    }
+  VkFormat prefered_formats[] = {VK_FORMAT_R8G8B8A8_UNORM,
+                                 VK_FORMAT_B8G8R8A8_UNORM};
+
+  for (const auto &pref_format : prefered_formats) {
+    auto find_res = find_if(begin(supported_formats), end(supported_formats),
+							[&](VkSurfaceFormatKHR f) { return f.format == pref_format; });
+	if(find_res == supported_formats.end()){
+	  continue;
+	}
+
+	format = *find_res;
+	return;
   }
 
   format = supported_formats[0];

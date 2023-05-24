@@ -19,3 +19,5 @@
 
 #include "buffer.hpp"
 #include "staging_buffer.hpp"
+
+#include "semaphore.hpp"

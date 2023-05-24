@@ -11,10 +11,14 @@ int main() {
   try {
     Application application;
     application.Run();
+	INFO("application run finished");
   } catch (IException &e) {
     ERROR("application exit afer unhandled excpetion: {0}", (string)e);
     return -1;
-  };
+  } catch (...) {
+    ERROR("application exit afer unknown exception");
+    return -1;
+  }
 
   INFO("program finished");
 }

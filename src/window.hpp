@@ -6,10 +6,6 @@
 
 using namespace std;
 
-namespace vk {
-class Instance;
-}
-
 class Window {
 private:
   static bool glfw_inited;
@@ -40,6 +36,7 @@ public:
 
   void Destroy();
 
+  GLFWwindow* GetHandle();
   void CreateSurface();
   void DestroySurface();
   VkSurfaceKHR GetSurface();

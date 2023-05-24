@@ -52,8 +52,12 @@ void Window::Destroy() {
     DestroySurface();
   }
 
+  handle = nullptr;
+  
   DEBUG("window destroyed");
 }
+
+GLFWwindow *Window::GetHandle() { return handle; }
 
 void Window::PollEvents() { glfwPollEvents(); }
 
@@ -68,7 +72,7 @@ VkSurfaceKHR Window::GetSurface() { return surface; }
 
 void Window::CreateSurface() {
   if (surface) {
-	WARN("creating new surface without deleting old one");
+    WARN("creating new surface without deleting old one");
   }
 
   VkResult result =

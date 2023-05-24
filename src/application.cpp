@@ -1,26 +1,8 @@
 #include "application.hpp"
 
-Application ::~Application() {
-  PreDestructor();
-  INFO("application destroyed");
-}
+Application ::~Application() { INFO("application destroyed"); }
 
 void Application::Run() {
-  window = unique_ptr<Window>(new Window());
-
-  uint32_t glfw_extensions_count;
-  const char **glfw_extensions;
-
-  window->GetInstanceExtensions(glfw_extensions, glfw_extensions_count);
-
-  InitVulkan(glfw_extensions_count, glfw_extensions);
-
-  window->AttachInstance(*instance);
-
-  window->CreateSurface();
-
-  swapchain = make_unique<vk::Swapchain>(*device, window->GetSurface());
-
   Prepare();
 
   RenderLoop();
@@ -34,7 +16,17 @@ void Application::RenderLoop() {
   while (!window->ShouldClose()) {
 
     try {
+
+      ImGui_ImplVulkan_NewFrame();
+      ImGui_ImplGlfw_NewFrame();
+      ImGui::NewFrame();
+
+      ImGui::ShowDemoWindow();
+
+      ImGui::Render();
+
       Draw();
+
     } catch (vk::AcquireNextImageFailedException e) {
       ChangeSurface();
     } catch (vk::PresentFailedException e) {
@@ -48,7 +40,6 @@ void Application::RenderLoop() {
 }
 
 void Application::ChangeSurface() {
-
   vkDeviceWaitIdle(device->GetHandle());
 
   swapchain.reset();
