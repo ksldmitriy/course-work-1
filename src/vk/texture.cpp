@@ -19,8 +19,8 @@ void Texture::Destroy() {
 
     TRACE("texture memory destoyed");
   }
-}
 
+}
 void Texture::LoadImage(char *image_data, glm::ivec2 image_size,
                         CommandBuffer *command_buffer, Queue graphics_queue) {
   vk::ImageCreateInfo image_crate_info;

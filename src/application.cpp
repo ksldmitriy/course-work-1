@@ -19,6 +19,10 @@ void Application::RenderLoop() {
   DEBUG("render loop launched");
 
   while (!window->ShouldClose()) {
+    vector<Line> lines = {{{0, 0.5}, {0, -0.5}}};
+
+    debug_renderer->LoadLines(lines);
+
     Update();
 
     RenderUI();
@@ -34,9 +38,15 @@ void Application::Update() {
   time_point current_frame = now();
   duration delta_time_duration = current_frame - prev_frame;
   prev_frame = current_frame;
+  duration time_form_start_duration = current_frame - program_start;
 
   delta_time =
       chrono::duration_cast<chrono::nanoseconds>(delta_time_duration).count() /
+      1000000000.0l;
+
+  time_from_start =
+      chrono::duration_cast<chrono::nanoseconds>(time_form_start_duration)
+          .count() /
       1000000000.0l;
 
   frame_time_history.erase(frame_time_history.begin());

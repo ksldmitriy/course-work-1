@@ -31,8 +31,6 @@ void DebugRenderer::Init() {
   UpdateDescriptorSet();
 
   CreatePipeline(extent, render_pass);
-
-  CreateCommandBuffers();
 }
 
 void DebugRenderer::SetCamera(Camera camera) {
@@ -58,31 +56,51 @@ void DebugRenderer::ApplyCameraSettings() {
 DebugRendererSettings DebugRenderer::GetSettings() { return settings; }
 
 void DebugRenderer::LoadLines(vector<Line> &lines) {
-  size_t optimal_capacity = GetOptimalSpritesCapacity(lines.size());
+  size_t new_lines_count = lines_count + lines.size();
+
+  if (staging_data.size() < new_lines_count) {
+    staging_data.resize(new_lines_count);
+  }
+
+  copy(lines.begin(), lines.end(), staging_data.begin() + lines_count);
+  lines_count = new_lines_count;
+
+  TRACE("debug renderer lines loaded");
+}
+
+void DebugRenderer::DrawLine(Line line) {
+  size_t new_lines_count = lines_count + 1;
+
+  if (staging_data.size() < new_lines_count) {
+    staging_data.resize(new_lines_count);
+  }
+
+  staging_data[lines_count] = line;
+
+  lines_count++;
+}
+
+void DebugRenderer::LoadStagingData() {
+  size_t optimal_capacity = GetOptimalSpritesCapacity(lines_count);
   if (optimal_capacity != lines_capacity) {
     lines_capacity = optimal_capacity;
     CreateVertexBuffer();
     TRACE("debug renderer lines buffer resized to {0}", optimal_capacity);
   }
 
-  lines_count = lines.size();
+  CreateVertexBuffer();
 
   SpriteVertex *mapped_data = (SpriteVertex *)vertex_buffer->Map();
 
-  memcpy(mapped_data, lines.data(), sizeof(lines[0]) * lines.size());
+  memcpy(mapped_data, staging_data.data(),
+         sizeof(staging_data[0]) * lines_count);
 
   vertex_buffer->Flush();
   vertex_buffer->Unmap();
-
-  TRACE("debug renderer lines loaded");
-
-  CreateCommandBuffers();
 }
 
 DebugRenderer::~DebugRenderer() {
-  for (int i = 0; i < command_buffers.size(); i++) {
-    command_buffers[i]->Dispose();
-  }
+  command_buffer->Dispose();
 
   command_pool->Dispose();
 
@@ -108,8 +126,10 @@ void DebugRenderer::Render(uint32_t image_index,
                            VkSemaphore image_available_semaphore,
                            VkSemaphore render_finished_semaphore,
                            VkFence fence) {
-  VkCommandBuffer command_buffer_handle =
-      command_buffers[image_index]->GetHandle();
+  LoadStagingData();
+  CreateCommandBuffer(image_index);
+
+  VkCommandBuffer command_buffer_handle = command_buffer->GetHandle();
 
   VkPipelineStageFlags wait_dst_stage_mask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 
@@ -126,61 +146,66 @@ void DebugRenderer::Render(uint32_t image_index,
   if (result) {
     throw vk::CriticalException("cant submit to queue");
   }
+
+  staging_data.resize(lines_count);
+  lines_count = 0;
 }
 
-void DebugRenderer::CreateCommandBuffers() {
+void DebugRenderer::CreateCommandBuffer(uint32_t image_index) {
   if (!command_pool) {
-    command_pool =
-        make_unique<vk::CommandPool>(*device, queue, framebuffers.size());
+    command_pool = make_unique<vk::CommandPool>(*device, queue, 1);
 
-    command_buffers.resize(framebuffers.size());
-  } else {
-    for (auto &b : command_buffers) {
-      b->Dispose();
-    }
-  }
-
-  for (int i = 0; i < framebuffers.size(); i++) {
-    unique_ptr<vk::CommandBuffer> command_buffer =
+    command_buffer =
         command_pool->AllocateCommandBuffer(vk::CommandBufferLevel::primary);
-
-    command_buffer->Begin();
-
-    VkClearValue clear_value = {{{0, 0, 0, 1}}};
-
-    VkRenderPassBeginInfo render_pass_begin_info =
-        vk::render_pass_begin_info_template;
-    render_pass_begin_info.renderPass = render_pass;
-    render_pass_begin_info.framebuffer = framebuffers[i];
-    render_pass_begin_info.renderArea.offset = {0, 0};
-    render_pass_begin_info.renderArea.extent = extent;
-    render_pass_begin_info.clearValueCount = 1;
-    render_pass_begin_info.pClearValues = &clear_value;
-
-    vkCmdBeginRenderPass(command_buffer->GetHandle(), &render_pass_begin_info,
-                         VK_SUBPASS_CONTENTS_INLINE);
-
-    vkCmdBindPipeline(command_buffer->GetHandle(),
-                      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-    VkBuffer vertex_buffers[] = {vertex_buffer->GetHandle()};
-    VkDeviceSize offsets[] = {0, 0};
-
-    vkCmdBindVertexBuffers(command_buffer->GetHandle(), 0, 1, vertex_buffers,
-                           offsets);
-
-    vkCmdBindDescriptorSets(command_buffer->GetHandle(),
-                            VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0,
-                            1, &descriptor_set, 0, nullptr);
-
-    vkCmdDraw(command_buffer->GetHandle(), 2, lines_count, 0, 0);
-
-    vkCmdEndRenderPass(command_buffer->GetHandle());
-
-    command_buffer->End();
-
-    command_buffers[i] = move(command_buffer);
   }
+
+  vk::SrcBufferBarrier src_barrier;
+  src_barrier.access = VK_ACCESS_HOST_WRITE_BIT;
+  src_barrier.stage = VK_PIPELINE_STAGE_HOST_BIT;
+
+  vk::DstBufferBarrier dst_barrier;
+  dst_barrier.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+  dst_barrier.stage = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+
+  vk::BufferBarrier barrier(vertex_buffer.get(), src_barrier, dst_barrier);
+
+  command_buffer->Reset();
+  command_buffer->Begin();
+
+  barrier.Set(command_buffer.get());
+
+  VkClearValue clear_value = {{{0, 0, 0, 1}}};
+
+  VkRenderPassBeginInfo render_pass_begin_info =
+      vk::render_pass_begin_info_template;
+  render_pass_begin_info.renderPass = render_pass;
+  render_pass_begin_info.framebuffer = framebuffers[image_index];
+  render_pass_begin_info.renderArea.offset = {0, 0};
+  render_pass_begin_info.renderArea.extent = extent;
+  render_pass_begin_info.clearValueCount = 1;
+  render_pass_begin_info.pClearValues = &clear_value;
+
+  vkCmdBeginRenderPass(command_buffer->GetHandle(), &render_pass_begin_info,
+                       VK_SUBPASS_CONTENTS_INLINE);
+
+  vkCmdBindPipeline(command_buffer->GetHandle(),
+                    VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+  VkBuffer vertex_buffers[] = {vertex_buffer->GetHandle()};
+  VkDeviceSize offsets[] = {0, 0};
+
+  vkCmdBindVertexBuffers(command_buffer->GetHandle(), 0, 1, vertex_buffers,
+                         offsets);
+
+  vkCmdBindDescriptorSets(command_buffer->GetHandle(),
+                          VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0,
+                          1, &descriptor_set, 0, nullptr);
+
+  vkCmdDraw(command_buffer->GetHandle(), 2, lines_count, 0, 0);
+
+  vkCmdEndRenderPass(command_buffer->GetHandle());
+
+  command_buffer->End();
 
   TRACE("debug renderer render command buffers created");
 }

@@ -36,6 +36,7 @@ private:
   VkDescriptorSet descriptor_set;
   VkPipelineLayout pipeline_layout;
 
+  vector<Line> staging_data;
   size_t lines_capacity;
   size_t lines_count;
 
@@ -44,7 +45,7 @@ private:
   DebugRendererSettings settings;
 
   unique_ptr<vk::CommandPool> command_pool;
-  vector<unique_ptr<vk::CommandBuffer>> command_buffers;
+  unique_ptr<vk::CommandBuffer> command_buffer;
 
   size_t GetOptimalSpritesCapacity(size_t sprites_count);
 
@@ -55,10 +56,12 @@ private:
   void UpdateDescriptorSet();
   void CreateDescriptors();
 
+  void LoadStagingData();
+  
   void CreateVertexBuffer();
 
   void CreatePipeline(VkExtent2D extent, VkRenderPass render_pass);
-  void CreateCommandBuffers();
+  void CreateCommandBuffer(uint32_t image_index);
 
   void Init();
 
@@ -76,4 +79,5 @@ public:
   DebugRendererSettings GetSettings();
 
   void LoadLines(vector<Line> &lines);
+  void DrawLine(Line line);
 };

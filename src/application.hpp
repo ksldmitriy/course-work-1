@@ -27,7 +27,7 @@ private:
 
   time_point program_start;
   time_point prev_frame;
-  duration time_from_start;
+  long double time_from_start;
   long double delta_time;
   vector<float> frame_time_history;
   vector<float> fps_history;

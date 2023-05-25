@@ -22,9 +22,9 @@ using namespace std;
 
 class VulkanApplication {
 private:
-  unique_ptr<vk::Semaphore> image_available_semaphore, road_render_finished_semaphore,
-      cars_render_finished_semaphore, debug_render_finished_semaphore,
-      imgui_render_finished_semaphore;
+  unique_ptr<vk::Semaphore> image_available_semaphore,
+      road_render_finished_semaphore, cars_render_finished_semaphore,
+      debug_render_finished_semaphore, imgui_render_finished_semaphore;
   VkFence fence;
 
   unique_ptr<vk::CommandPool> command_pool;
@@ -40,11 +40,6 @@ private:
   vk::Queue graphics_queue;
 
   unique_ptr<vk::Texture> car_texture;
-
-  unique_ptr<InstanceRenderer> instance_renderer;
-  unique_ptr<DebugRenderer> debug_renderer;
-  unique_ptr<ImguiRenderer> imgui_renderer;
-  unique_ptr<MeshRenderer> road_renderer;
 
   VkRenderPass road_render_pass, cars_render_pass, debug_render_pass,
       imgui_render_pass;
@@ -81,6 +76,11 @@ private:
 
 protected:
   unique_ptr<Window> window;
+
+  unique_ptr<InstanceRenderer> instance_renderer;
+  unique_ptr<DebugRenderer> debug_renderer;
+  unique_ptr<ImguiRenderer> imgui_renderer;
+  unique_ptr<MeshRenderer> road_renderer;
 
   void InitVulkan(uint32_t glfw_extensions_count, const char **glfw_extensions);
   void Prepare();

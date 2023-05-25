@@ -56,7 +56,7 @@ void StagingBuffer::CopyToBuffer(Buffer *dst_buffer, VkDeviceSize size,
 }
 
 MemoryBarrier StagingBuffer::CreateLoadDataBarrier() {
-  DstMemoryBarrier dst;
+  DstMemoryBarrier dst; // BUG ??
   dst.stage = VK_PIPELINE_STAGE_HOST_BIT;
   dst.access = VK_ACCESS_HOST_WRITE_BIT;
 

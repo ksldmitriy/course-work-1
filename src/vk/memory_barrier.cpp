@@ -20,7 +20,7 @@ VkMemoryBarrier MemoryBarrier::ToNative() {
   VkMemoryBarrier memory_barrier = memory_barrier_template;
   memory_barrier.srcAccessMask = src.access;
   memory_barrier.dstAccessMask = dst.access;
-
+  
   return memory_barrier;
 }
 
