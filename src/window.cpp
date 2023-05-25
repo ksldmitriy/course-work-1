@@ -15,6 +15,19 @@ Window::Window() {
 
   CreateWindow();
 
+  glm::dvec2 cursor_pos;
+  glfwGetCursorPos(handle, &cursor_pos.x, &cursor_pos.y);
+
+  MouseState state;
+  state.p_pos = cursor_pos;
+  state.pos = PixelToRelative(cursor_pos);
+
+  glm::ivec2 window_pos;
+  glm::ivec2 window_size;
+  glfwGetWindowFrameSize(handle, &window_pos.x, &window_pos.y, &window_size.x,
+                         &window_size.y);
+  size = window_size - window_pos;
+
   DEBUG("window created");
 }
 
@@ -35,8 +48,18 @@ void Window::CreateWindow() {
 
   glfwSetKeyCallback(handle, StaticKeyCallback);
   glfwSetWindowSizeCallback(handle, StaticResizeCallback);
+  glfwSetCursorPosCallback(handle, StaticCursorPositionCallback);
+  glfwSetMouseButtonCallback(handle, StaticMouseButtonCallback);
 
   windows_db[handle] = this;
+}
+
+glm::fvec2 Window::PixelToRelative(glm::ivec2 p_pos) {
+  glm::fvec2 pos;
+  pos.x = p_pos.x / (float)size.x;
+  pos.y = p_pos.y / (float)size.y;
+
+  return pos;
 }
 
 void Window::AttachInstance(vk::Instance &instance) {
@@ -53,7 +76,7 @@ void Window::Destroy() {
   }
 
   handle = nullptr;
-  
+
   DEBUG("window destroyed");
 }
 
@@ -106,7 +129,73 @@ void Window::GetInstanceExtensions(const char **&extensions,
   extensions = glfwGetRequiredInstanceExtensions(&extensions_count);
 }
 
+void Window::AttachImguiIO(ImGuiIO *io) { imgui_io = io; }
+
+MouseState Window::GetMouseState() { return mouse_state; }
+
+void Window::GetEvents(vector<MouseButtonEvent> &key_events,
+                       vector<MouseMoveEvent> &move_events) {
+  key_events = move(this->mouse_button_events);
+  move_events = move(this->mouse_move_events);
+}
+
 // callbacks
+
+void Window::ResizeCallback(int width, int height) {
+  INFO("window resized to {} {}", width, height);
+
+  size = {width, height};
+
+  mouse_state.pos = PixelToRelative(mouse_state.p_pos);
+}
+
+void Window::KeyCallback(int key, int scancode, int action, int mods) {
+  if (key == GLFW_KEY_ESCAPE) {
+    glfwSetWindowShouldClose(handle, GLFW_TRUE);
+    return;
+  }
+}
+
+void Window::CursorPositionCallback(double x_pos, double y_pos) {
+  MouseMoveEvent event;
+  event.p_pos = {x_pos, y_pos};
+  event.pos = PixelToRelative(event.p_pos);
+
+  event.p_delta = event.p_pos - mouse_state.p_pos;
+  event.delta = event.pos - mouse_state.pos;
+
+  mouse_move_events.push_back(event);
+}
+
+void Window::MouseButtonCallback(int button, int action, int mods) {
+  if (imgui_io->WantCaptureMouse) {
+    return;
+  }
+
+  MouseButtonEvent event;
+
+  switch (button) {
+  case 0:
+    event.button = MouseButton::left;
+    break;
+  case 1:
+    event.button = MouseButton::right;
+    break;
+  case 2:
+    event.button = MouseButton::middle;
+    break;
+  default:
+    return;
+  };
+
+  event.pressed = action == GLFW_PRESS;
+
+  event.shift_mod = mods & GLFW_MOD_SHIFT;
+
+  mouse_button_events.push_back(event);
+}
+
+// static callbacks
 
 void Window::StaticResizeCallback(GLFWwindow *window, int width, int height) {
   if (!windows_db.contains(window)) {
@@ -126,14 +215,22 @@ void Window::StaticKeyCallback(GLFWwindow *window, int key, int scancode,
 
   windows_db[window]->KeyCallback(key, scancode, action, mods);
 }
-
-void Window::ResizeCallback(int width, int height) {
-  INFO("window resized to {} {}", width, height);
-}
-
-void Window::KeyCallback(int key, int scancode, int action, int mods) {
-  if (key == GLFW_KEY_ESCAPE) {
-    glfwSetWindowShouldClose(handle, GLFW_TRUE);
+void Window::StaticCursorPositionCallback(GLFWwindow *window, double x_pos,
+                                          double y_pos) {
+  if (!windows_db.contains(window)) {
+    INFO("no window for key callback");
     return;
   }
+
+  windows_db[window]->CursorPositionCallback(x_pos, y_pos);
+}
+
+void Window::StaticMouseButtonCallback(GLFWwindow *window, int button,
+                                       int action, int mods) {
+  if (!windows_db.contains(window)) {
+    INFO("no window for resize callback");
+    return;
+  }
+
+  windows_db[window]->MouseButtonCallback(button, action, mods);
 }

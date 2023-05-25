@@ -45,6 +45,9 @@ void ImguiRenderer::InitImgui() {
   ImGui::CreateContext();
   //  ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags;
 
+  window->AttachImguiIO(&ImGui::GetIO());
+  
+  
   ImGui_ImplGlfw_InitForVulkan(window->GetHandle(), true);
 
   CreateImguiDescriptorPool();

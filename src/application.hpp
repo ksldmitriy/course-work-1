@@ -39,6 +39,12 @@ private:
   void RenderLoop();
 
   void Update();
+  void UpdateTime();
+
+  void ProcessEvents();
+  void ProcessMouseMoveEvent(MouseMoveEvent event);
+  void ProcessMouseButtonEvent(MouseButtonEvent event);
+  
   void RenderUI();
   void DrawPerformanceMenu();
   

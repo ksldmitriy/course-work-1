@@ -85,6 +85,8 @@ protected:
   void InitVulkan(uint32_t glfw_extensions_count, const char **glfw_extensions);
   void Prepare();
 
+  void SetCamera(Camera camera);
+  
   void Draw();
 
 public:

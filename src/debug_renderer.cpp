@@ -88,9 +88,7 @@ void DebugRenderer::LoadStagingData() {
     TRACE("debug renderer lines buffer resized to {0}", optimal_capacity);
   }
 
-  CreateVertexBuffer();
-
-  SpriteVertex *mapped_data = (SpriteVertex *)vertex_buffer->Map();
+  MeshVertex *mapped_data = (MeshVertex *)vertex_buffer->Map();
 
   memcpy(mapped_data, staging_data.data(),
          sizeof(staging_data[0]) * lines_count);
@@ -235,13 +233,13 @@ void DebugRenderer::CreatePipeline(VkExtent2D extent,
   uint32_t location = 0;
 
   vector<VkVertexInputBindingDescription> binding_description;
-  auto vertex_binding_description = SpriteVertex::GetBindingDescription(0);
+  auto vertex_binding_description = MeshVertex::GetBindingDescription(0);
 
   binding_description.push_back(vertex_binding_description);
 
   vector<VkVertexInputAttributeDescription> attribute_descriptions;
   auto vertex_attribute_descriptions =
-      SpriteVertex::GetAttributeDescriptions(0, location);
+      MeshVertex::GetAttributeDescriptions(0, location);
 
   attribute_descriptions.insert(attribute_descriptions.end(),
                                 vertex_attribute_descriptions.begin(),
@@ -388,7 +386,7 @@ void DebugRenderer::CreateVertexBuffer() {
   // create buffers
   vk::BufferCreateInfo create_info;
   create_info.queue = queue;
-  create_info.size = sizeof(SpriteVertex) * 2 * lines_capacity;
+  create_info.size = sizeof(MeshVertex) * 2 * lines_capacity;
   create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
   vertex_buffer = make_unique<vk::Buffer>(*device, create_info);

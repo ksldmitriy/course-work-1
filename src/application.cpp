@@ -11,6 +11,7 @@ void Application::Run() {
 void Application::Prepare() {
   VulkanApplication::Prepare();
 
+  program_start = now();
   frame_time_history.resize(100, 0);
   fps_history.resize(100, 0);
 }
@@ -19,22 +20,52 @@ void Application::RenderLoop() {
   DEBUG("render loop launched");
 
   while (!window->ShouldClose()) {
-    vector<Line> lines = {{{0, 0.5}, {0, -0.5}}};
-
-    debug_renderer->LoadLines(lines);
-
     Update();
 
     RenderUI();
 
+	debug_renderer->DrawLine({{0, 0}, {1, 1}});
+    
     Draw();
-    Window::PollEvents();
+
+	Camera camera;
+	camera.pos = {time_from_start / 5.0, 0};
+	camera.scale = 1;
+	
+	SetCamera(camera);
   }
 
   DEBUG("render loop exit");
 }
 
 void Application::Update() {
+  UpdateTime();
+
+  ProcessEvents();
+}
+
+void Application::ProcessEvents() {
+  Window::PollEvents();
+
+  vector<MouseMoveEvent> mouse_move_events;
+  vector<MouseButtonEvent> mouse_button_events;
+
+  window->GetEvents(mouse_button_events, mouse_move_events);
+
+  for (auto e : mouse_move_events) {
+    ProcessMouseMoveEvent(e);
+  }
+
+  for (auto e : mouse_button_events) {
+    ProcessMouseButtonEvent(e);
+  }
+}
+
+void Application::ProcessMouseMoveEvent(MouseMoveEvent event) {}
+
+void Application::ProcessMouseButtonEvent(MouseButtonEvent event) {}
+
+void Application::UpdateTime() {
   time_point current_frame = now();
   duration delta_time_duration = current_frame - prev_frame;
   prev_frame = current_frame;

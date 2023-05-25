@@ -221,10 +221,6 @@ void VulkanApplication::CreateDebugRenderer() {
   create_info.settings = settings;
 
   debug_renderer = make_unique<DebugRenderer>(create_info);
-
-  vector<Line> lines = {{{0, 0.5}, {0, -0.5}}};
-
-  debug_renderer->LoadLines(lines);
 }
 
 void VulkanApplication::CreateInstanceRenderer() {
@@ -310,6 +306,13 @@ void VulkanApplication::Present(uint32_t next_image_index) {
   if (result) {
     throw vk::PresentFailedException();
   }
+}
+
+
+void VulkanApplication::SetCamera(Camera camera){
+  road_renderer->SetCamera(camera);
+  debug_renderer->SetCamera(camera);
+  instance_renderer->SetCamera(camera);
 }
 
 void VulkanApplication::CreateFramebuffers() {
