@@ -8,10 +8,11 @@ VulkanApplication::~VulkanApplication() {
 
   command_pool->Dispose();
 
-  instance_renderer.reset();
-  imgui_renderer.reset();
+  DestoyRenderers();
 
-  vkDestroyRenderPass(device->GetHandle(), first_render_pass, nullptr);
+  vkDestroyRenderPass(device->GetHandle(), road_render_pass, nullptr);
+  vkDestroyRenderPass(device->GetHandle(), cars_render_pass, nullptr);
+  vkDestroyRenderPass(device->GetHandle(), debug_render_pass, nullptr);
   vkDestroyRenderPass(device->GetHandle(), imgui_render_pass, nullptr);
 
   CleanupFramebuffers();
@@ -56,7 +57,9 @@ void VulkanApplication::Prepare() {
 
   swapchain = make_unique<vk::Swapchain>(*device, window->GetSurface());
 
-  CreateFirstRenderPass();
+  CreateRoadRenderPass();
+  CreateCarsRenderPass();
+  CreateDebugRenderPass();
   CreateImguiRenderPass();
 
   CreateSyncObjects();
@@ -70,10 +73,23 @@ void VulkanApplication::Prepare() {
 
   CreateTextures();
 
-  CreateInstanceRenderer();
-  CreateImguiRenderer();
+  CreateRenderers();
 
   DEBUG("vulkan application prepared");
+}
+
+void VulkanApplication::CreateRenderers() {
+  CreateRoadRenderer();
+  CreateInstanceRenderer();
+  CreateDebugRenderer();
+  CreateImguiRenderer();
+}
+
+void VulkanApplication::DestoyRenderers() {
+  road_renderer.reset();
+  instance_renderer.reset();
+  debug_renderer.reset();
+  imgui_renderer.reset();
 }
 
 void VulkanApplication::CreateTextures() {
@@ -105,7 +121,9 @@ void VulkanApplication::CreateSyncObjects() {
   VkFenceCreateInfo fence_create_info = vk::fence_create_info_template;
 
   image_available_semaphore = make_unique<vk::Semaphore>(device.get());
+  road_render_finished_semaphore = make_unique<vk::Semaphore>(device.get());
   cars_render_finished_semaphore = make_unique<vk::Semaphore>(device.get());
+  debug_render_finished_semaphore = make_unique<vk::Semaphore>(device.get());
   imgui_render_finished_semaphore = make_unique<vk::Semaphore>(device.get());
 
   VkResult result =
@@ -121,14 +139,23 @@ void VulkanApplication::CreateSyncObjects() {
 
 void VulkanApplication::CleanupSyncObjects() {
   image_available_semaphore.reset();
+  road_render_finished_semaphore.reset();
   cars_render_finished_semaphore.reset();
+  debug_render_finished_semaphore.reset();
   imgui_render_finished_semaphore.reset();
 
   vkDestroyFence(device->GetHandle(), fence, nullptr);
 }
 
-void VulkanApplication::ChangeSurface(VkSurfaceKHR surface) {
-  swapchain = make_unique<vk::Swapchain>(*device, surface);
+void VulkanApplication::ChangeSurface() {
+  vkDeviceWaitIdle(device->GetHandle());
+
+  swapchain.reset();
+
+  window->DestroySurface();
+  window->CreateSurface();
+
+  swapchain = make_unique<vk::Swapchain>(*device, window->GetSurface());
 
   CleanupSyncObjects();
   CreateSyncObjects();
@@ -136,8 +163,7 @@ void VulkanApplication::ChangeSurface(VkSurfaceKHR surface) {
   CleanupFramebuffers();
   CreateFramebuffers();
 
-  CreateInstanceRenderer();
-  CreateImguiRenderer();
+  CreateRenderers();
 }
 
 void VulkanApplication::CreateImguiRenderer() {
@@ -156,6 +182,51 @@ void VulkanApplication::CreateImguiRenderer() {
   imgui_renderer = make_unique<ImguiRenderer>(create_info);
 }
 
+void VulkanApplication::CreateRoadRenderer() {
+  MeshRendererSettings settings;
+  settings.camera = {{0, 0}, 1};
+
+  MeshRendererCreateInfo create_info;
+  create_info.device = device.get();
+  create_info.queue = graphics_queue;
+  create_info.framebuffers = framebuffers;
+  create_info.extent = swapchain->GetExtent();
+  create_info.render_pass = road_render_pass;
+  create_info.settings = settings;
+
+  road_renderer = make_unique<MeshRenderer>(create_info);
+
+  vector<Triangle> mesh;
+
+  Triangle t;
+  t.v[0] = {0, 1};
+  t.v[1] = {1, 0};
+  t.v[2] = {-1, 0};
+
+  mesh.push_back(t);
+  
+  road_renderer->LoadMehs(mesh);
+}
+
+void VulkanApplication::CreateDebugRenderer() {
+  DebugRendererSettings settings;
+  settings.camera = {{0, 0}, 1};
+
+  DebugRendererCreateInfo create_info;
+  create_info.device = device.get();
+  create_info.queue = graphics_queue;
+  create_info.framebuffers = framebuffers;
+  create_info.extent = swapchain->GetExtent();
+  create_info.render_pass = debug_render_pass;
+  create_info.settings = settings;
+
+  debug_renderer = make_unique<DebugRenderer>(create_info);
+
+  vector<Line> lines = {{{0, 0.5}, {0, -0.5}}};
+
+  debug_renderer->LoadLines(lines);
+}
+
 void VulkanApplication::CreateInstanceRenderer() {
   const int total_sprites = 7;
 
@@ -168,7 +239,7 @@ void VulkanApplication::CreateInstanceRenderer() {
   create_info.queue = graphics_queue;
   create_info.framebuffers = framebuffers;
   create_info.extent = swapchain->GetExtent();
-  create_info.render_pass = first_render_pass;
+  create_info.render_pass = cars_render_pass;
   create_info.texture = car_texture->CreateImageView();
   create_info.settings = settings;
 
@@ -189,31 +260,38 @@ void VulkanApplication::CreateInstanceRenderer() {
 }
 
 void VulkanApplication::Draw() {
-  uint32_t next_image_index =
-      swapchain->AcquireNextImage(image_available_semaphore->GetHandle());
+  try {
+    uint32_t next_image_index =
+        swapchain->AcquireNextImage(image_available_semaphore->GetHandle());
 
-  Render(next_image_index);
+    Render(next_image_index);
 
-  Present(next_image_index);
+    Present(next_image_index);
 
-  vkWaitForFences(device->GetHandle(), 1, &fence, VK_TRUE, UINT64_MAX);
-  vkResetFences(device->GetHandle(), 1, &fence);
+    vkWaitForFences(device->GetHandle(), 1, &fence, VK_TRUE, UINT64_MAX);
+    vkResetFences(device->GetHandle(), 1, &fence);
+  } catch (vk::AcquireNextImageFailedException e) {
+    ChangeSurface();
+  } catch (vk::PresentFailedException e) {
+    ChangeSurface();
+  }
 }
 
 void VulkanApplication::Render(uint32_t next_image_index) {
-  instance_renderer->Render(next_image_index,
-                            image_available_semaphore->GetHandle(),
-                            cars_render_finished_semaphore->GetHandle(), VK_NULL_HANDLE);
+  road_renderer->Render(
+      next_image_index, image_available_semaphore->GetHandle(),
+      road_render_finished_semaphore->GetHandle(), VK_NULL_HANDLE);
 
-  ImGui_ImplVulkan_NewFrame();
-  ImGui_ImplGlfw_NewFrame();
-  ImGui::NewFrame();
+  instance_renderer->Render(
+      next_image_index, road_render_finished_semaphore->GetHandle(),
+      cars_render_finished_semaphore->GetHandle(), VK_NULL_HANDLE);
 
-  ImGui::ShowDemoWindow();
+  debug_renderer->Render(
+      next_image_index, cars_render_finished_semaphore->GetHandle(),
+      debug_render_finished_semaphore->GetHandle(), VK_NULL_HANDLE);
 
-  ImGui::Render();
-
-  imgui_renderer->Render(next_image_index, cars_render_finished_semaphore->GetHandle(),
+  imgui_renderer->Render(next_image_index,
+                         debug_render_finished_semaphore->GetHandle(),
                          imgui_render_finished_semaphore->GetHandle(), fence);
 }
 
@@ -236,7 +314,7 @@ void VulkanApplication::Present(uint32_t next_image_index) {
 
 void VulkanApplication::CreateFramebuffers() {
   VkFramebufferCreateInfo create_info = vk::framebuffer_create_info_template;
-  create_info.renderPass = first_render_pass;
+  create_info.renderPass = cars_render_pass;
   create_info.attachmentCount = 1;
   create_info.width = swapchain->GetExtent().width;
   create_info.height = swapchain->GetExtent().height;
@@ -264,7 +342,6 @@ void VulkanApplication::CleanupFramebuffers() {
 }
 
 void VulkanApplication::CreateImguiRenderPass() {
-
   VkAttachmentDescription color_attachment =
       vk::attachment_description_template;
   color_attachment.format = swapchain->GetFormat().format;
@@ -297,15 +374,15 @@ void VulkanApplication::CreateImguiRenderPass() {
   DEBUG("imgui render pass created");
 }
 
-void VulkanApplication::CreateFirstRenderPass() {
+void VulkanApplication::CreateDebugRenderPass() {
   VkAttachmentDescription color_attachment =
       vk::attachment_description_template;
   color_attachment.format = swapchain->GetFormat().format;
-  color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
   color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-  color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  color_attachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
   color_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-  
+
   VkAttachmentReference color_attachment_reference;
   color_attachment_reference.attachment = 0;
   color_attachment_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -322,12 +399,78 @@ void VulkanApplication::CreateFirstRenderPass() {
   create_info.pSubpasses = &subpass_description;
 
   VkResult result = vkCreateRenderPass(device->GetHandle(), &create_info,
-                                       nullptr, &first_render_pass);
+                                       nullptr, &debug_render_pass);
   if (result) {
     throw vk::CriticalException("cant create render pass");
   }
 
-  DEBUG("first render pass created");
+  DEBUG("debug render pass created");
+}
+
+void VulkanApplication::CreateCarsRenderPass() {
+  VkAttachmentDescription color_attachment =
+      vk::attachment_description_template;
+  color_attachment.format = swapchain->GetFormat().format;
+  color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+  color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  color_attachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  color_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+  VkAttachmentReference color_attachment_reference;
+  color_attachment_reference.attachment = 0;
+  color_attachment_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+  VkSubpassDescription subpass_description = vk::subpass_description_template;
+  subpass_description.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+  subpass_description.colorAttachmentCount = 1;
+  subpass_description.pColorAttachments = &color_attachment_reference;
+
+  VkRenderPassCreateInfo create_info = vk::render_pass_create_info_template;
+  create_info.attachmentCount = 1;
+  create_info.pAttachments = &color_attachment;
+  create_info.subpassCount = 1;
+  create_info.pSubpasses = &subpass_description;
+
+  VkResult result = vkCreateRenderPass(device->GetHandle(), &create_info,
+                                       nullptr, &cars_render_pass);
+  if (result) {
+    throw vk::CriticalException("cant create render pass");
+  }
+
+  DEBUG("cars render pass created");
+}
+
+void VulkanApplication::CreateRoadRenderPass() {
+  VkAttachmentDescription color_attachment =
+      vk::attachment_description_template;
+  color_attachment.format = swapchain->GetFormat().format;
+  color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  color_attachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+  VkAttachmentReference color_attachment_reference;
+  color_attachment_reference.attachment = 0;
+  color_attachment_reference.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+  VkSubpassDescription subpass_description = vk::subpass_description_template;
+  subpass_description.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+  subpass_description.colorAttachmentCount = 1;
+  subpass_description.pColorAttachments = &color_attachment_reference;
+
+  VkRenderPassCreateInfo create_info = vk::render_pass_create_info_template;
+  create_info.attachmentCount = 1;
+  create_info.pAttachments = &color_attachment;
+  create_info.subpassCount = 1;
+  create_info.pSubpasses = &subpass_description;
+
+  VkResult result = vkCreateRenderPass(device->GetHandle(), &create_info,
+                                       nullptr, &road_render_pass);
+  if (result) {
+    throw vk::CriticalException("cant create render pass");
+  }
+
+  DEBUG("road render pass created");
 }
 
 void VulkanApplication::CreateInstance(uint32_t glfw_extensions_count,

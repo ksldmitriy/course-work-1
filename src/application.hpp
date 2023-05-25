@@ -4,6 +4,7 @@
 #include "window.hpp"
 #include <chrono>
 #include <memory>
+#include <deque>
 
 #include <stb_image.h>
 
@@ -25,15 +26,22 @@ class Application : protected VulkanApplication {
 private:
 
   time_point program_start;
+  time_point prev_frame;
   duration time_from_start;
-
+  long double delta_time;
+  vector<float> frame_time_history;
+  vector<float> fps_history;
+  float fps;
+  
   VkRenderPass imgui_render_pass;
   
   void Prepare();
   void RenderLoop();
 
-  void ChangeSurface();
-
+  void Update();
+  void RenderUI();
+  void DrawPerformanceMenu();
+  
 public:
   Application() = default;
   Application(Application &) = delete;

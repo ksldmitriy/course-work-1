@@ -119,7 +119,7 @@ void Swapchain::GenerateCreateInfo(PhysicalDevice &physical_device,
   vector<VkPresentModeKHR> supported_present_modes =
       physical_device.GetSurfacePresentModes(surface);
 
-  present_mode = ChoosePresentMode(supported_present_modes);
+  present_mode = ChoosePresentMode(supported_present_modes, VK_PRESENT_MODE_IMMEDIATE_KHR);
 
   VkSurfaceTransformFlagBitsKHR surface_transform =
       ChooseSurfaceTransform(capabilities);
@@ -186,12 +186,13 @@ VkSurfaceTransformFlagBitsKHR Swapchain::ChooseSurfaceTransform(
   return surface_capabilities.currentTransform;
 }
 
-VkPresentModeKHR Swapchain::ChoosePresentMode(
-    vector<VkPresentModeKHR> &supported_present_modes) {
+VkPresentModeKHR
+Swapchain::ChoosePresentMode(vector<VkPresentModeKHR> &supported_present_modes,
+                             VkPresentModeKHR prefered_present_mode) {
   if (find(supported_present_modes.begin(), supported_present_modes.end(),
-           VK_PRESENT_MODE_FIFO_KHR) != supported_present_modes.end()) {
+           prefered_present_mode) != supported_present_modes.end()) {
     TRACE("present mode is fifo");
-    return VK_PRESENT_MODE_FIFO_KHR;
+    return prefered_present_mode;
   }
 
   TRACE("present mode is not fifo");
@@ -210,14 +211,15 @@ void Swapchain::ChooseSurfaceFormat(
                                  VK_FORMAT_B8G8R8A8_UNORM};
 
   for (const auto &pref_format : prefered_formats) {
-    auto find_res = find_if(begin(supported_formats), end(supported_formats),
-							[&](VkSurfaceFormatKHR f) { return f.format == pref_format; });
-	if(find_res == supported_formats.end()){
-	  continue;
-	}
+    auto find_res =
+        find_if(begin(supported_formats), end(supported_formats),
+                [&](VkSurfaceFormatKHR f) { return f.format == pref_format; });
+    if (find_res == supported_formats.end()) {
+      continue;
+    }
 
-	format = *find_res;
-	return;
+    format = *find_res;
+    return;
   }
 
   format = supported_formats[0];

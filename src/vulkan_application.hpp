@@ -8,8 +8,10 @@
 #include <stb_image.h>
 
 #include "camera.hpp"
+#include "debug_renderer.hpp"
 #include "imgui_renderer.hpp"
 #include "instance_renderer.hpp"
+#include "mesh_renderer.hpp"
 #include "vk/vulkan.hpp"
 
 chrono::high_resolution_clock::time_point typedef time_point;
@@ -20,18 +22,45 @@ using namespace std;
 
 class VulkanApplication {
 private:
-  void CreateFirstRenderPass();
-  void CreateImguiRenderPass();
-
-  void CreateFramebuffers();
-  void CreateSyncObjects();
-
-  unique_ptr<vk::Semaphore> image_available_semaphore,
-      cars_render_finished_semaphore, imgui_render_finished_semaphore;
+  unique_ptr<vk::Semaphore> image_available_semaphore, road_render_finished_semaphore,
+      cars_render_finished_semaphore, debug_render_finished_semaphore,
+      imgui_render_finished_semaphore;
   VkFence fence;
 
   unique_ptr<vk::CommandPool> command_pool;
   unique_ptr<vk::CommandBuffer> staging_command_buffer;
+
+  vector<VkFramebuffer> framebuffers;
+
+  unique_ptr<vk::Instance> instance;
+  unique_ptr<vk::Device> device;
+
+  unique_ptr<vk::Swapchain> swapchain;
+
+  vk::Queue graphics_queue;
+
+  unique_ptr<vk::Texture> car_texture;
+
+  unique_ptr<InstanceRenderer> instance_renderer;
+  unique_ptr<DebugRenderer> debug_renderer;
+  unique_ptr<ImguiRenderer> imgui_renderer;
+  unique_ptr<MeshRenderer> road_renderer;
+
+  VkRenderPass road_render_pass, cars_render_pass, debug_render_pass,
+      imgui_render_pass;
+
+  void CreateRoadRenderPass();
+  void CreateCarsRenderPass();
+  void CreateDebugRenderPass();
+  void CreateImguiRenderPass();
+
+  void CreateRoadRenderer();
+  void CreateInstanceRenderer();
+  void CreateDebugRenderer();
+  void CreateImguiRenderer();
+
+  void CreateFramebuffers();
+  void CreateSyncObjects();
 
   void Render(uint32_t next_image_index);
   void Present(uint32_t next_image_index);
@@ -43,36 +72,20 @@ private:
                       const char **glfw_extensions);
   void CreateDevice();
 
+  void ChangeSurface();
+
+  void CreateRenderers();
+  void DestoyRenderers();
+
+  void CreateTextures();
+
 protected:
   unique_ptr<Window> window;
-
-  vector<VkFramebuffer> framebuffers;
-
-  unique_ptr<vk::Instance> instance;
-  unique_ptr<vk::Device> device;
-
-  unique_ptr<InstanceRenderer> instance_renderer;
-  unique_ptr<ImguiRenderer> imgui_renderer;
-
-  unique_ptr<vk::Swapchain> swapchain;
-
-  VkRenderPass first_render_pass, imgui_render_pass;
-
-  vk::Queue graphics_queue;
-
-  unique_ptr<vk::Texture> car_texture;
 
   void InitVulkan(uint32_t glfw_extensions_count, const char **glfw_extensions);
   void Prepare();
 
   void Draw();
-
-  void ChangeSurface(VkSurfaceKHR surface);
-
-  void CreateInstanceRenderer();
-  void CreateImguiRenderer();
-
-  void CreateTextures();
 
 public:
   VulkanApplication();

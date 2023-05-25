@@ -1,6 +1,6 @@
-#include "instance_renderer.hpp"
+#include "mesh_renderer.hpp"
 
-InstanceRenderer::InstanceRenderer(InstanceRendererCreateInfo &create_info) {
+MeshRenderer::MeshRenderer(MeshRendererCreateInfo &create_info) {
   device = create_info.device;
   queue = create_info.queue;
 
@@ -8,28 +8,22 @@ InstanceRenderer::InstanceRenderer(InstanceRendererCreateInfo &create_info) {
   extent = create_info.extent;
   render_pass = create_info.render_pass;
 
-  texture_view = move(create_info.texture);
-
   settings = create_info.settings;
 
-  sprites_count = 0;
-  sprites_capacity = GetOptimalSpritesCapacity(0);
+  mesh_count = 0;
+  mesh_capacity = GetOptimalSpritesCapacity(0);
 
   Init();
 
   ApplyCameraSettings();
-  ApplySpriteSizeSettings();
 
-  INFO("instance renderer created");
+  INFO("mesh renderer created");
 }
 
-void InstanceRenderer::Init() {
+void MeshRenderer::Init() {
   CreateVertexBuffer();
-  CreateInstanceBuffers(sprites_capacity);
 
   CreateUniformBuffer();
-
-  CreateTextureSampler();
 
   CreateDescriptorSetLayout();
   CreateDescriptorPool();
@@ -41,17 +35,12 @@ void InstanceRenderer::Init() {
   CreateCommandBuffers();
 }
 
-void InstanceRenderer::SetCamera(Camera camera) {
+void MeshRenderer::SetCamera(Camera camera) {
   settings.camera = camera;
   ApplyCameraSettings();
 }
 
-void InstanceRenderer::SetSpriteSize(glm::fvec2 sprite_size) {
-  settings.sprite_size = sprite_size;
-  ApplySpriteSizeSettings();
-}
-
-void InstanceRenderer::ApplyCameraSettings() {
+void MeshRenderer::ApplyCameraSettings() {
   UniformData *uniform_data = (UniformData *)uniform_buffer->Map();
 
   uniform_data->pos = settings.camera.pos;
@@ -63,59 +52,35 @@ void InstanceRenderer::ApplyCameraSettings() {
   uniform_buffer->Flush();
   uniform_buffer->Unmap();
 
-  TRACE("instance renderer camera settings applied");
+  TRACE("mesh renderer camera settings applied");
 }
 
-void InstanceRenderer::ApplySpriteSizeSettings() {
-  SpriteVertex unique_vertices[4] = {{{0.5f, 0.5f}, {1.0f, 1.0f}},
-                               {{0.5f, -0.5f}, {1.0f, 0.0f}},
-                               {{-0.5f, -0.5f}, {0.0f, 0.0f}},
-                               {{-0.5f, 0.5f}, {0.0f, 1.0f}}};
+MeshRendererSettings MeshRenderer::GetSettings() { return settings; }
 
-  for (auto &v : unique_vertices) {
-    v.pos.x *= settings.sprite_size.x;
-    v.pos.y *= settings.sprite_size.y;
+
+void MeshRenderer::LoadMehs(vector<Triangle> &mesh){
+  size_t optimal_capacity = GetOptimalSpritesCapacity(mesh.size());
+  if (optimal_capacity != mesh_capacity) {
+    mesh_capacity = optimal_capacity;
+    CreateVertexBuffer();
+    TRACE("mesh renderer mesh buffer resized to {0}", optimal_capacity);
   }
 
-  SpriteVertex vertices[6] = {unique_vertices[0], unique_vertices[1],
-                        unique_vertices[2], unique_vertices[0],
-                        unique_vertices[2], unique_vertices[3]};
+  mesh_count = mesh.size();
 
-  char *mapped_memory = (char *)vertex_buffer->Map();
+  MeshVertex *mapped_data = (MeshVertex*)vertex_buffer->Map();
 
-  memcpy(mapped_memory, (char *)vertices, sizeof(vertices));
+  memcpy(mapped_data, mesh.data(), sizeof(mesh[0]) * mesh.size());
 
   vertex_buffer->Flush();
   vertex_buffer->Unmap();
 
-  TRACE("instance renderer sprite size applied");
-}
-
-InstanceRendererSettings InstanceRenderer::GetSettings() { return settings; }
-
-void InstanceRenderer::LoadSprites(vector<Transforn2D> &sprites) {
-  size_t optimal_capacity = GetOptimalSpritesCapacity(sprites.size());
-  if (optimal_capacity != sprites_capacity) {
-    CreateInstanceBuffers(optimal_capacity);
-    TRACE("instance renderer instance buffer resized to {0}", optimal_capacity);
-  }
-
-  InstanceData *mapped_instance_data = (InstanceData *)instance_buffer->Map();
-
-  memcpy(mapped_instance_data, sprites.data(),
-         sprites.size() * sizeof(sprites[0]));
-
-  instance_buffer->Flush();
-  instance_buffer->Unmap();
-
-  sprites_count = sprites.size();
-
-  TRACE("instance renderer sprites loaded");
+  TRACE("mesh renderer lines loaded");
 
   CreateCommandBuffers();
 }
 
-InstanceRenderer::~InstanceRenderer() {
+MeshRenderer::~MeshRenderer() {
   for (int i = 0; i < command_buffers.size(); i++) {
     command_buffers[i]->Dispose();
   }
@@ -123,14 +88,10 @@ InstanceRenderer::~InstanceRenderer() {
   command_pool->Dispose();
 
   vertex_buffer->Destroy();
-  instance_buffer->Destroy();
   uniform_buffer->Destroy();
 
   vertex_buffer_memory->Free();
   uniform_buffer_memory->Free();
-
-  vkDestroySampler(device->GetHandle(), texture_sampler, nullptr);
-  texture_view->Destroy();
 
   vkDestroyDescriptorSetLayout(device->GetHandle(), descriptor_set_layout,
                                nullptr);
@@ -141,28 +102,13 @@ InstanceRenderer::~InstanceRenderer() {
 
   vkDestroyPipeline(device->GetHandle(), pipeline, nullptr);
 
-  INFO("instance renderer destroyed");
+  INFO("mesh renderer destroyed");
 }
 
-void InstanceRenderer::CreateTextureSampler() {
-  VkSamplerAddressMode address_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-
-  VkSamplerCreateInfo create_info = vk::sampler_create_info_template;
-  create_info.addressModeU = address_mode;
-  create_info.addressModeV = address_mode;
-  create_info.addressModeW = address_mode;
-
-  VkResult result = vkCreateSampler(device->GetHandle(), &create_info, nullptr,
-                                    &texture_sampler);
-  if (result) {
-    throw vk::CriticalException("cant create texture sampler");
-  }
-}
-
-void InstanceRenderer::Render(uint32_t image_index,
-                              VkSemaphore image_available_semaphore,
-                              VkSemaphore render_finished_semaphore,
-                              VkFence fence) {
+void MeshRenderer::Render(uint32_t image_index,
+                          VkSemaphore image_available_semaphore,
+                          VkSemaphore render_finished_semaphore,
+                          VkFence fence) {
   VkCommandBuffer command_buffer_handle =
       command_buffers[image_index]->GetHandle();
 
@@ -183,7 +129,7 @@ void InstanceRenderer::Render(uint32_t image_index,
   }
 }
 
-void InstanceRenderer::CreateCommandBuffers() {
+void MeshRenderer::CreateCommandBuffers() {
   if (!command_pool) {
     command_pool =
         make_unique<vk::CommandPool>(*device, queue, framebuffers.size());
@@ -218,18 +164,17 @@ void InstanceRenderer::CreateCommandBuffers() {
     vkCmdBindPipeline(command_buffer->GetHandle(),
                       VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-    VkBuffer vertex_buffers[] = {vertex_buffer->GetHandle(),
-                                 instance_buffer->GetHandle()};
+    VkBuffer vertex_buffers[] = {vertex_buffer->GetHandle()};
     VkDeviceSize offsets[] = {0, 0};
 
-    vkCmdBindVertexBuffers(command_buffer->GetHandle(), 0, 2, vertex_buffers,
+    vkCmdBindVertexBuffers(command_buffer->GetHandle(), 0, 1, vertex_buffers,
                            offsets);
 
     vkCmdBindDescriptorSets(command_buffer->GetHandle(),
                             VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0,
                             1, &descriptor_set, 0, nullptr);
 
-    vkCmdDraw(command_buffer->GetHandle(), 6, sprites_count, 0, 0);
+    vkCmdDraw(command_buffer->GetHandle(), 3, mesh_count, 0, 0);
 
     vkCmdEndRenderPass(command_buffer->GetHandle());
 
@@ -238,15 +183,14 @@ void InstanceRenderer::CreateCommandBuffers() {
     command_buffers[i] = move(command_buffer);
   }
 
-  TRACE("instance renderer render command buffers created");
+  TRACE("mesh renderer render command buffers created");
 }
 
-void InstanceRenderer::CreatePipeline(VkExtent2D extent,
-                                      VkRenderPass render_pass) {
+void MeshRenderer::CreatePipeline(VkExtent2D extent, VkRenderPass render_pass) {
   unique_ptr<vk::ShaderModule> vertex_shader =
-      make_unique<vk::ShaderModule>(*device, "shaders/vert.spv");
+      make_unique<vk::ShaderModule>(*device, "shaders/mesh_vert.spv");
   unique_ptr<vk::ShaderModule> fragment_shader =
-      make_unique<vk::ShaderModule>(*device, "shaders/frag.spv");
+      make_unique<vk::ShaderModule>(*device, "shaders/mesh_frag.spv");
 
   VkPipelineShaderStageCreateInfo vertex_shader_stage_create_info =
       vk::pipeline_shader_stage_create_info_template;
@@ -266,25 +210,17 @@ void InstanceRenderer::CreatePipeline(VkExtent2D extent,
   uint32_t location = 0;
 
   vector<VkVertexInputBindingDescription> binding_description;
-  auto vertex_binding_description = SpriteVertex::GetBindingDescription(0);
-  auto instance_binding_description = InstanceData::GetBindingDescription(1);
+  auto vertex_binding_description = MeshVertex::GetBindingDescription(0);
 
   binding_description.push_back(vertex_binding_description);
-  binding_description.push_back(instance_binding_description);
 
   vector<VkVertexInputAttributeDescription> attribute_descriptions;
   auto vertex_attribute_descriptions =
-      SpriteVertex::GetAttributeDescriptions(0, location);
-  auto instance_attribute_descriptions =
-      InstanceData::GetAttributeDescriptions(1, location);
+      MeshVertex::GetAttributeDescriptions(0, location);
 
   attribute_descriptions.insert(attribute_descriptions.end(),
                                 vertex_attribute_descriptions.begin(),
                                 vertex_attribute_descriptions.end());
-
-  attribute_descriptions.insert(attribute_descriptions.end(),
-                                instance_attribute_descriptions.begin(),
-                                instance_attribute_descriptions.end());
 
   VkPipelineVertexInputStateCreateInfo vertex_input =
       vk::vertex_input_create_info_template;
@@ -353,7 +289,7 @@ void InstanceRenderer::CreatePipeline(VkExtent2D extent,
     throw vk::CriticalException("cant create pipeline layout");
   }
 
-  TRACE("instance renderer pipeline layout created");
+  TRACE("mesh renderer pipeline layout created");
 
   VkPipelineDynamicStateCreateInfo dynamic_state =
       vk::pipeline_dynamic_state_create_info_template;
@@ -384,10 +320,10 @@ void InstanceRenderer::CreatePipeline(VkExtent2D extent,
     throw vk::CriticalException("cant create pipeline");
   }
 
-  DEBUG("instance renderer graphics pipeline created");
+  DEBUG("mesh renderer graphics pipeline created");
 }
 
-void InstanceRenderer::CreateUniformBuffer() {
+void MeshRenderer::CreateUniformBuffer() {
   vk::BufferCreateInfo create_info;
   create_info.queue = queue;
   create_info.size = sizeof(UniformData);
@@ -414,8 +350,8 @@ void InstanceRenderer::CreateUniformBuffer() {
   uniform_buffer_memory->BindBuffer(*uniform_buffer);
 }
 
-size_t InstanceRenderer::GetOptimalSpritesCapacity(size_t sprites_count) {
-  size_t optimal_capacity = 2;
+size_t MeshRenderer::GetOptimalSpritesCapacity(size_t sprites_count) {
+  size_t optimal_capacity = 8;
   while (sprites_count >= optimal_capacity) {
     optimal_capacity *= 1.7;
   }
@@ -423,42 +359,11 @@ size_t InstanceRenderer::GetOptimalSpritesCapacity(size_t sprites_count) {
   return optimal_capacity;
 }
 
-void InstanceRenderer::CreateInstanceBuffers(size_t size) {
-  // create buffer
-  vk::BufferCreateInfo create_info;
-  create_info.queue = queue;
-  create_info.size = sizeof(InstanceData) * size;
-  create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-
-  instance_buffer = make_unique<vk::Buffer>(*device, create_info);
-
-  // allocate memory
-  vk::PhysicalDevice &physical_device = device->GetPhysicalDevice();
-
-  vk::ChooseMemoryTypeInfo choose_info;
-  choose_info.memory_types = instance_buffer->GetMemoryTypes();
-  choose_info.heap_properties = 0;
-  choose_info.properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-
-  uint32_t memory_type = physical_device.ChooseMemoryType(choose_info);
-
-  vector<vk::MemoryObject *> buffers = {vertex_buffer.get()};
-
-  VkDeviceSize memory_size = vk::DeviceMemory::CalculateMemorySize(buffers);
-
-  instance_buffer_memory =
-      make_unique<vk::DeviceMemory>(*device, memory_size, memory_type);
-
-  instance_buffer_memory->BindBuffer(*instance_buffer);
-
-  sprites_capacity = size;
-}
-
-void InstanceRenderer::CreateVertexBuffer() {
+void MeshRenderer::CreateVertexBuffer() {
   // create buffers
   vk::BufferCreateInfo create_info;
   create_info.queue = queue;
-  create_info.size = sizeof(SpriteVertex) * 6;
+  create_info.size = sizeof(MeshVertex) * 3 * mesh_capacity;
   create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
 
   vertex_buffer = make_unique<vk::Buffer>(*device, create_info);
@@ -482,10 +387,10 @@ void InstanceRenderer::CreateVertexBuffer() {
 
   vertex_buffer_memory->BindBuffer(*vertex_buffer);
 
-  TRACE("instance renderer vertex buffer created");
+  TRACE("mesh renderer vertex buffer created");
 }
 
-void InstanceRenderer::UpdateDescriptorSet() {
+void MeshRenderer::UpdateDescriptorSet() {
   vector<VkWriteDescriptorSet> write_sets;
 
   VkDescriptorBufferInfo buffer_info;
@@ -503,28 +408,13 @@ void InstanceRenderer::UpdateDescriptorSet() {
 
   write_sets.push_back(ubo_write_set);
 
-  VkDescriptorImageInfo image_info;
-  image_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-  image_info.imageView = texture_view->GetHandle();
-  image_info.sampler = texture_sampler;
-
-  VkWriteDescriptorSet texture_write_set = vk::write_descriptor_set_template;
-  texture_write_set.dstSet = descriptor_set;
-  texture_write_set.dstBinding = 1;
-  texture_write_set.dstArrayElement = 0;
-  texture_write_set.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  texture_write_set.descriptorCount = 1;
-  texture_write_set.pImageInfo = &image_info;
-
-  write_sets.push_back(texture_write_set);
-
   vkUpdateDescriptorSets(device->GetHandle(), write_sets.size(),
                          write_sets.data(), 0, nullptr);
 
-  TRACE("instance renderer descriptors set updated");
+  TRACE("mesh renderer descriptors set updated");
 }
 
-void InstanceRenderer::AllocateDescriptorSet() {
+void MeshRenderer::AllocateDescriptorSet() {
   VkDescriptorSetAllocateInfo allocate_info =
       vk::descriptor_set_allocate_info_template;
   allocate_info.descriptorPool = descriptors_pool;
@@ -537,10 +427,10 @@ void InstanceRenderer::AllocateDescriptorSet() {
     throw vk::CriticalException("cant allocate descriptor set");
   }
 
-  TRACE("instance renderer descriptor set allocated");
+  TRACE("mesh renderer descriptor set allocated");
 }
 
-void InstanceRenderer::CreateDescriptorPool() {
+void MeshRenderer::CreateDescriptorPool() {
   vector<VkDescriptorPoolSize> pool_sizes;
 
   VkDescriptorPoolSize ubo_pool_size;
@@ -548,12 +438,6 @@ void InstanceRenderer::CreateDescriptorPool() {
   ubo_pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
   pool_sizes.push_back(ubo_pool_size);
-
-  VkDescriptorPoolSize sampler_pool_size;
-  sampler_pool_size.descriptorCount = 1;
-  sampler_pool_size.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-
-  pool_sizes.push_back(sampler_pool_size);
 
   VkDescriptorPoolCreateInfo create_info =
       vk::descriptor_pool_create_info_template;
@@ -567,10 +451,10 @@ void InstanceRenderer::CreateDescriptorPool() {
     throw vk::CriticalException("cant create descriptor pool");
   }
 
-  TRACE("instance renderer descriptor pool created");
+  TRACE("mesh renderer descriptor pool created");
 }
 
-void InstanceRenderer::CreateDescriptorSetLayout() {
+void MeshRenderer::CreateDescriptorSetLayout() {
   vector<VkDescriptorSetLayoutBinding> bindings;
 
   VkDescriptorSetLayoutBinding ubo_layout_binding;
@@ -581,16 +465,6 @@ void InstanceRenderer::CreateDescriptorSetLayout() {
   ubo_layout_binding.pImmutableSamplers = nullptr;
 
   bindings.push_back(ubo_layout_binding);
-
-  VkDescriptorSetLayoutBinding sampler_layout_binding;
-  sampler_layout_binding.binding = 1;
-  sampler_layout_binding.descriptorCount = 1;
-  sampler_layout_binding.descriptorType =
-      VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-  sampler_layout_binding.pImmutableSamplers = nullptr;
-  sampler_layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-  bindings.push_back(sampler_layout_binding);
 
   VkDescriptorSetLayoutCreateInfo create_info =
       vk::descriptor_set_layout_create_info_template;
@@ -603,5 +477,5 @@ void InstanceRenderer::CreateDescriptorSetLayout() {
     throw vk::CriticalException("cant create descriptor set layout");
   }
 
-  TRACE("instance renderer descriptor set layout created");
+  TRACE("mesh renderer descriptor set layout created");
 }
