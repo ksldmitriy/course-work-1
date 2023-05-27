@@ -9,7 +9,7 @@ Simulation::Simulation(SimulationCreateInfo &create_info) {
 
   Transforn2D cars;
   cars.pos = {0, 0};
-  cars.rot = 3;
+  cars.rot = -1.9;
 
   const int cars_count = 100;
 
@@ -152,7 +152,7 @@ void Simulation::CreateRaysLayout() {
   vector<float> angles;
 
   angles.push_back(0);
-  const float step = 0.03;
+  const float step = 0.07;
   for (float i = step; i < 2; i += step) {
     angles.push_back(i);
     angles.push_back(-i);
@@ -164,4 +164,5 @@ void Simulation::CreateRaysLayout() {
   }
 
   map_borders->LoadRaysLayout(rays_layout);
+  map_borders->SetMaxDistance(1.8);
 }

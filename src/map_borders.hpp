@@ -5,6 +5,7 @@
 #include <iostream>
 #include <limits>
 #include <span>
+#include <stack>
 
 using namespace std;
 
@@ -13,18 +14,20 @@ private:
   struct KDTreeNode {
     Rect rect;
     int childs;
-	int duplicates;
-	int unique_lines;
+    int duplicates;
+    int unique_lines;
 
     bool is_final;
     vector<Line> lines;
   };
 
+  float max_distance;
+
   vector<KDTreeNode> kd_tree;
 
   vector<glm::fvec2> rays_layout;
 
-  float Raycast(glm::fvec2 ray, glm::fvec2 pos);
+  float Raycast(vector<int> &nodes_to_check, glm::fvec2 ray, glm::fvec2 pos);
   __attribute__((always_inline)) inline float
   Raycast(glm::fvec2 ray, glm::fvec2 pos, Line line);
 
@@ -32,12 +35,15 @@ private:
 
   void BuildKDTree(vector<Line> borders);
 
+  bool RayRectIntersection(Rect rect, glm::fvec2 ray, glm::fvec2 pos);
+  float DistanceToBox(Rect rect, glm::fvec2 p);
+
   void TrySplitKDNode(int node);
   void AddChildNodes(int parent, KDTreeNode &c1, KDTreeNode &c2);
 
   void SplitKDNode(KDTreeNode &node, KDTreeNode childs[2]);
   void SplitKDNodeByAxis(KDTreeNode &node, KDTreeNode childs[2], int axis);
-  
+
 public:
   MapBorders(vector<Line> &borders);
   MapBorders(MapBorders &) = delete;
@@ -46,4 +52,5 @@ public:
   vector<Rect> GetKDRects();
   void Raycast(Transforn2D transform, span<float> &raycats_results);
   void LoadRaysLayout(vector<glm::fvec2> rays_layout);
+  void SetMaxDistance(float distance);
 };

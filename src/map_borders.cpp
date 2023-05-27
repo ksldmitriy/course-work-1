@@ -8,40 +8,82 @@ void MapBorders::Raycast(Transforn2D transform, span<float> &raycats_results) {
 
   glm::fmat2x2 rot_mat = {{rot_cos, -rot_sin}, {rot_sin, rot_cos}};
 
+  vector<int> final_nodes;
+  stack<int> nodes_to_check;
+  nodes_to_check.push(0);
+
+  while (!nodes_to_check.empty()) {
+    int node_i = nodes_to_check.top();
+    nodes_to_check.pop();
+
+    KDTreeNode &node = kd_tree[node_i];
+
+    if (DistanceToBox(node.rect, transform.pos) > max_distance) {
+      continue;
+    }
+
+    if (node.is_final) {
+      final_nodes.push_back(node_i);
+    } else {
+      nodes_to_check.push(node.childs);
+      nodes_to_check.push(node.childs + 1);
+    }
+  }
+
   for (int r = 0; r < rays_layout.size(); r++) {
     glm::vec2 ray = rays_layout[r] * rot_mat;
-    raycats_results[r] = Raycast(ray, transform.pos);
+    raycats_results[r] = Raycast(final_nodes, ray, transform.pos);
   }
 }
 
-Rect MapBorders::CalculateBordersRect(vector<Line> &borders) {
-  Rect rect;
-  rect.bottom_right = borders[0].end;
-  rect.top_left = borders[0].end;
+float MapBorders::Raycast(vector<int> &nodes_to_check, glm::fvec2 ray,
+                          glm::fvec2 pos) {
+  float raycast = max_distance;
 
-  for (auto &l : borders) {
-    glm::fvec2 p = l.start;
-    rect.bottom_right = {max(rect.bottom_right.x, p.x),
-                         min(rect.bottom_right.y, p.y)};
-    rect.top_left = {min(rect.top_left.x, p.x), max(rect.top_left.y, p.y)};
+  for (auto node_i : nodes_to_check) {
+    KDTreeNode &node = kd_tree[node_i];
 
-    p = l.end;
-    rect.bottom_right = {max(rect.bottom_right.x, p.x),
-                         min(rect.bottom_right.y, p.y)};
-    rect.top_left = {min(rect.top_left.x, p.x), max(rect.top_left.y, p.y)};
+    if (!RayRectIntersection(node.rect, ray, pos)) {
+      continue;
+    }
+
+    for (auto &l : node.lines) {
+      raycast = min(Raycast(ray, pos, l), raycast);
+    }
   }
-
-  return rect;
-}
-
-float MapBorders::Raycast(glm::fvec2 ray, glm::fvec2 pos) {
-  float raycast = numeric_limits<float>::max();
-
-  // for (auto b : borders) {
-  //   raycast = min(Raycast(ray, pos, b), raycast);
-  // }
 
   return raycast;
+}
+
+float MapBorders::DistanceToBox(Rect rect, glm::fvec2 p) {
+  float dx = max(max(rect.top_left.x - p.x, 0.f), p.x - rect.bottom_right.x);
+  float dy = max(max(rect.bottom_right.y - p.y, 0.f), p.y - rect.top_left.y);
+  return sqrtf(dx * dx + dy * dy);
+}
+
+bool MapBorders::RayRectIntersection(Rect rect, glm::fvec2 ray,
+                                     glm::fvec2 pos) {
+  bool x_inside = rect.top_left.x <= pos.x && rect.bottom_right.x >= pos.x;
+  bool y_inside = rect.top_left.y >= pos.y && rect.bottom_right.y <= pos.y;
+
+  if (x_inside && y_inside) {
+    return true;
+  }
+
+  Line d1 = {rect.bottom_right, rect.top_left};
+  if (Raycast(ray, pos, d1) != numeric_limits<float>::max()) {
+    return true;
+  }
+
+  glm::fvec2 bottom_left = {rect.top_left.x, rect.bottom_right.y};
+  glm::fvec2 top_right = {rect.bottom_right.x, rect.top_left.y};
+
+  Line d2 = {bottom_left, top_right};
+  if (Raycast(ray, pos, d2) != numeric_limits<float>::max()) {
+    return true;
+  }
+
+  return false;
 }
 
 float MapBorders::Raycast(glm::fvec2 ray, glm::fvec2 pos, Line line) {
@@ -49,7 +91,7 @@ float MapBorders::Raycast(glm::fvec2 ray, glm::fvec2 pos, Line line) {
   glm::fvec2 v2 = line.end - line.start;
   glm::fvec2 v3 = {-ray.y, ray.x};
 
-  float dot = glm::dot(v2, v3);
+  float dot =  glm::dot(v2, v3);
   if (abs(dot) < 0.000001) {
     return numeric_limits<float>::max();
   }
@@ -67,6 +109,8 @@ void MapBorders::LoadRaysLayout(vector<glm::fvec2> rays_layout) {
   this->rays_layout = rays_layout;
 }
 
+void MapBorders::SetMaxDistance(float distance) { max_distance = distance; }
+
 void MapBorders::BuildKDTree(vector<Line> borders) {
   KDTreeNode initial_node;
   initial_node.lines = borders;
@@ -83,7 +127,6 @@ void MapBorders::BuildKDTree(vector<Line> borders) {
 void MapBorders::TrySplitKDNode(int node_i) {
   KDTreeNode &node = kd_tree[node_i];
   if (node.lines.size() < 3) {
-    cout << "-split" << endl;
     return;
   }
 
@@ -92,7 +135,7 @@ void MapBorders::TrySplitKDNode(int node_i) {
 
   int min_unique = min(childs[0].unique_lines, childs[1].unique_lines);
 
-  if (min_unique < 4) {
+  if (min_unique < 8){
     return;
   }
 
@@ -187,4 +230,24 @@ void MapBorders::AddChildNodes(int parent, KDTreeNode &c1, KDTreeNode &c2) {
 
   kd_tree.push_back(move(c1));
   kd_tree.push_back(move(c2));
+}
+
+Rect MapBorders::CalculateBordersRect(vector<Line> &borders) {
+  Rect rect;
+  rect.bottom_right = borders[0].end;
+  rect.top_left = borders[0].end;
+
+  for (auto &l : borders) {
+    glm::fvec2 p = l.start;
+    rect.bottom_right = {max(rect.bottom_right.x, p.x),
+                         min(rect.bottom_right.y, p.y)};
+    rect.top_left = {min(rect.top_left.x, p.x), max(rect.top_left.y, p.y)};
+
+    p = l.end;
+    rect.bottom_right = {max(rect.bottom_right.x, p.x),
+                         min(rect.bottom_right.y, p.y)};
+    rect.top_left = {min(rect.top_left.x, p.x), max(rect.top_left.y, p.y)};
+  }
+
+  return rect;
 }

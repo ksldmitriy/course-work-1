@@ -21,9 +21,9 @@ void Application::Prepare() {
 
   cars_renderer->SetSpriteSize({0.2, 0.4});
 
-  draw_rays = false;
+  draw_rays = true;
   draw_borders_kd_tree = true;
-  
+
   LoadMap();
 
   CreateSimulation();
@@ -61,7 +61,7 @@ void Application::RenderLoop() {
 
   while (!window->ShouldClose()) {
     if (IsSurfaceChanged()) {
-	  ChangeSufaceCallback();
+      ChangeSufaceCallback();
     }
 
     Update();
@@ -178,12 +178,12 @@ void Application::RenderUI() {
 
   ImGui::BeginTabBar("tabs");
 
-  if (ImGui::BeginTabItem("test")) {
-    DrawTestMenu();
-    ImGui::EndTabItem();
-  }
   if (ImGui::BeginTabItem("performance")) {
     DrawPerformanceMenu();
+    ImGui::EndTabItem();
+  }
+  if (ImGui::BeginTabItem("test")) {
+    DrawTestMenu();
     ImGui::EndTabItem();
   }
 
