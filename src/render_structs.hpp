@@ -12,6 +12,11 @@ struct Line {
   
 };
 
+struct Rect{
+  glm::fvec2 top_left;
+  glm::fvec2 bottom_right;
+};
+
 struct Circle{
   glm::fvec2 center;
   float radius;

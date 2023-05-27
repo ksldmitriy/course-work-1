@@ -1,8 +1,11 @@
 #include "map_loader.hpp"
 
-void MapLoader::LoadMap(fs::path path) {
+void MapLoader::LoadMap(fs::path path, float scale) {
   ReadLinesFromFile(path);
   ParseLines();
+
+  ScaleMap(scale);
+
   CalculateTriangles();
   CalculateOutline();
 }
@@ -10,6 +13,12 @@ void MapLoader::LoadMap(fs::path path) {
 vector<Triangle> MapLoader::GetMesh() { return triangles; }
 
 vector<Line> MapLoader::GetOutline() { return outer_lines; }
+
+void MapLoader::ScaleMap(float scale) {
+  for (auto &v : vertices) {
+    v *= scale;
+  }
+}
 
 void MapLoader::CalculateTriangles() {
   triangles.resize(indices.size());

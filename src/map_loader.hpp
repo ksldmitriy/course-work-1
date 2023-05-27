@@ -31,6 +31,8 @@ private:
 
   void CalculateOutline();
   void CalculateTriangles();
+
+  void ScaleMap(float scale);
   
   void ReadLinesFromFile(fs::path path);
   void ParseLines();
@@ -40,7 +42,7 @@ private:
 public:
   MapLoader() = default;
 
-  void LoadMap(fs::path path);
+  void LoadMap(fs::path path, float scale);
   vector<Triangle> GetMesh();
   vector<Line> GetOutline();
 };

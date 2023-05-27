@@ -4,6 +4,7 @@
 #include "map_borders.hpp"
 #include "nn.hpp"
 #include "road_collider.hpp"
+#include "cars_physics.hpp"
 
 using namespace std;
 
@@ -33,9 +34,12 @@ private:
 
   vector<Line> raycast_lines;
 
+  CarsPhysics cars_physics;
+  
   vector<unique_ptr<NeuralNetwork>> neural_networks;
   vector<float> raycast_results;
   vector<Transforn2D> cars_transforms;
+  vector<CarControls> cars_controls;
   vector<glm::fvec2> cars_velocity;
 
   void DeleteCar(int index);
@@ -53,6 +57,7 @@ private:
   void CreateRaycastLines();
   void RenderCars();
   void RenderRays();
+  void RenderKDBorders();
 
 public:
   Simulation(SimulationCreateInfo &create_info);
@@ -60,6 +65,6 @@ public:
   Simulation operator=(Simulation &) = delete;
 
   void Update();
-  void Render(bool draw_debug);
+  void Render(bool draw_rays, bool draw_borders_kd_tree);
   void SetRenderers(SimulationRenderers& renderers);
 };

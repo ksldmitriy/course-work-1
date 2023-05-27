@@ -37,6 +37,8 @@ private:
 
   unique_ptr<Simulation> simulation;
 
+  bool draw_rays, draw_borders_kd_tree;
+  
   void Prepare();
   void LoadMap();
 

@@ -21,6 +21,9 @@ void Application::Prepare() {
 
   cars_renderer->SetSpriteSize({0.2, 0.4});
 
+  draw_rays = false;
+  draw_borders_kd_tree = true;
+  
   LoadMap();
 
   CreateSimulation();
@@ -42,7 +45,7 @@ void Application::CreateSimulation() {
 
 void Application::LoadMap() {
   MapLoader map_loader;
-  map_loader.LoadMap("map-1.obj");
+  map_loader.LoadMap("map-1.obj", 0.2);
 
   map_mesh = map_loader.GetMesh();
   outer_lines = map_loader.GetOutline();
@@ -65,7 +68,7 @@ void Application::RenderLoop() {
 
     RenderUI();
 
-    simulation->Render(true);
+    simulation->Render(draw_rays, draw_borders_kd_tree);
 
     Draw();
   }
@@ -193,7 +196,10 @@ void Application::RenderUI() {
   first_call = false;
 }
 
-void Application::DrawTestMenu() {}
+void Application::DrawTestMenu() {
+  ImGui::Checkbox("draw rays", &draw_rays);
+  ImGui::Checkbox("draw borders kd tree", &draw_borders_kd_tree);
+}
 
 void Application::DrawPerformanceMenu() {
   ImGui::PlotLines("frame time", frame_time_history.data(),

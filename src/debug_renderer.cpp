@@ -31,7 +31,7 @@ void DebugRenderer::Init() {
   UpdateDescriptorSet();
 
   CreatePipeline(extent, render_pass);
-  
+
   CreateCommandBuffer(0);
 }
 
@@ -56,6 +56,22 @@ void DebugRenderer::ApplyCameraSettings() {
 }
 
 DebugRendererSettings DebugRenderer::GetSettings() { return settings; }
+
+void DebugRenderer::LoadRects(vector<Rect> &rects) {
+  vector<Line> lines(rects.size() * 4);
+
+  for (int i = 0; i < rects.size(); i++) {
+    Rect &rect = rects[i];
+    glm::fvec2 bottom_left = {rect.top_left.x, rect.bottom_right.y};
+    glm::fvec2 top_right = {rect.bottom_right.x, rect.top_left.y};
+    lines[i * 4 + 0] = {rect.bottom_right, bottom_left};
+    lines[i * 4 + 1] = {rect.bottom_right, top_right};
+    lines[i * 4 + 2] = {rect.top_left, top_right};
+    lines[i * 4 + 3] = {rect.top_left, bottom_left};
+  }
+
+  LoadLines(lines);
+}
 
 void DebugRenderer::LoadLines(vector<Line> &lines) {
   size_t new_lines_count = lines_count + lines.size();
@@ -201,7 +217,7 @@ void DebugRenderer::CreateCommandBuffer(uint32_t image_index) {
                           VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0,
                           1, &descriptor_set, 0, nullptr);
 
-  vkCmdDraw(command_buffer->GetHandle(), 2* lines_count, 1, 0, 0);
+  vkCmdDraw(command_buffer->GetHandle(), 2 * lines_count, 1, 0, 0);
 
   vkCmdEndRenderPass(command_buffer->GetHandle());
 

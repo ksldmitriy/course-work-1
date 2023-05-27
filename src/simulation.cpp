@@ -9,13 +9,17 @@ Simulation::Simulation(SimulationCreateInfo &create_info) {
 
   Transforn2D cars;
   cars.pos = {0, 0};
-  cars.rot = 1;
+  cars.rot = 3;
 
-  raycast_results.resize(10 * rays_layout.size());
+  const int cars_count = 100;
 
-  for (int i = 0; i < 10; i++) {
+  raycast_results.resize(cars_count * rays_layout.size());
+  cars_controls.resize(cars_count);
+
+  for (int i = 0; i < cars_count; i++) {
     cars_transforms.push_back(cars);
-    cars_velocity.push_back({0.02 * (i + 1), 0});
+    cars_velocity.push_back({});
+    cars_controls[i] = {0.3, -0.1};
   }
 
   CreateRaysLayout();
@@ -29,8 +33,14 @@ void Simulation::SetRenderers(SimulationRenderers &renderers) {
 
 void Simulation::Update() {
   UpdateRaycast();
+
+  return;
   UpdateMovement();
   DeleteLosers();
+
+  for (auto &nn : neural_networks) {
+    nn->Run();
+  }
 }
 
 void Simulation::UpdateRaycast() {
@@ -46,9 +56,7 @@ void Simulation::UpdateRaycast() {
 }
 
 void Simulation::UpdateMovement() {
-  for (int i = 0; i < cars_transforms.size(); i++) {
-    cars_transforms[i].pos += cars_velocity[i] * const_delta_time;
-  }
+  cars_physics.CalculatePhysics(cars_transforms, cars_velocity, cars_controls);
 }
 
 void Simulation::DeleteLosers() {
@@ -63,7 +71,7 @@ void Simulation::DeleteLosers() {
 
 void Simulation::CreateNeuralNerworks() {
   NeuralNetworkCreateInfo create_info;
-  create_info.layers_sizes = {10, 10, 10, 10};
+  create_info.layers_sizes = {(int)rays_layout.size() + 2, 10, 10, 3};
 
   for (int i = 0; i < cars_transforms.size(); i++) {
     unique_ptr<NeuralNetwork> nn = make_unique<NeuralNetwork>(create_info);
@@ -74,6 +82,7 @@ void Simulation::CreateNeuralNerworks() {
 void Simulation::DeleteCar(int index) {
   cars_velocity.erase(cars_velocity.begin() + index);
   cars_transforms.erase(cars_transforms.begin() + index);
+  neural_networks.erase(neural_networks.begin() + index);
 
   vector<float>::iterator raycast_first, raycast_last;
   GetRaycatsResultsRange(index, raycast_first, raycast_last);
@@ -87,12 +96,23 @@ void Simulation::GetRaycatsResultsRange(int index,
   last = raycast_results.begin() + (index + 1) * rays_layout.size();
 }
 
-void Simulation::Render(bool draw_debug) {
+void Simulation::Render(bool draw_rays, bool draw_borders_kd_tree) {
   RenderCars();
 
-  if (draw_debug) {
+  if (draw_rays) {
     RenderRays();
   }
+
+  if(draw_borders_kd_tree){
+	RenderKDBorders();
+  }
+}
+
+
+void Simulation::RenderKDBorders(){
+  vector<Rect> kd_rects = map_borders->GetKDRects();
+
+  debug_renderer->LoadRects(kd_rects);
 }
 
 void Simulation::RenderCars() { cars_renderer->LoadSprites(cars_transforms); }

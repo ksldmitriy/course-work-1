@@ -79,5 +79,6 @@ public:
   DebugRendererSettings GetSettings();
 
   void LoadLines(vector<Line> &lines);
+  void LoadRects(vector<Rect> &rects);
   void DrawLine(Line line);
 };

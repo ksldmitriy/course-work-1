@@ -17,7 +17,46 @@ NeuralNetwork::NeuralNetwork(NeuralNetworkCreateInfo &create_info) {
   layers_values[layers_count - 1].resize(create_info.layers_sizes.back());
 }
 
-void NeuralNetwork::Run(vector<float> &input, vector<float> &result) {}
+void NeuralNetwork::Run() {
+  AddBiases(layers_values[0], input_biases);
+  ApplyActivaionFunction(layers_values.front());
+
+  for (int i = 0; i < layers.size(); i++) {
+    copy(layers[i].biases.begin(), layers[i].biases.end(),
+         layers_values[i].begin());
+
+    ComputeLayer(layers_values[i], layers_values[i + 1], layers[i]);
+
+	ApplyActivaionFunction(layers_values[i]);
+  }
+}
+
+void NeuralNetwork::ApplyActivaionFunction(vector<float> &v) {
+  for (auto &i : v) {
+    i = ActivaionFunction(i);
+  }
+}
+
+void NeuralNetwork::ComputeLayer(vector<float> &prev_l, vector<float> &cur_l,
+                                 Layer &layer) {
+  for (int i = 0; i < cur_l.size(); i++) {
+    for (int j = 0; j < prev_l.size(); j++) {
+      cur_l[i] += prev_l[j] * layer.weights[i][j];
+    }
+  }
+}
+
+void NeuralNetwork::AddBiases(vector<float> &val, vector<float> &biases) {
+  for (int i = 0; i < val.size(); i++) {
+    val[i] += biases[i];
+  }
+}
+
+float NeuralNetwork::ActivaionFunction(float x) { return x / (1 + abs(x)); }
+
+vector<float> &NeuralNetwork::GetOutputLayer() { return layers_values.back(); }
+
+vector<float> &NeuralNetwork::GetInputLayer() { return layers_values.front(); }
 
 NeuralNetwork::Layer NeuralNetwork::CreateRandomLayer(int size, int prev_size) {
   Layer layer;
