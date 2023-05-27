@@ -9,9 +9,15 @@ using namespace std;
 struct Line {
   glm::fvec2 start;
   glm::fvec2 end;
+  
 };
 
-struct Triangle{
+struct Circle{
+  glm::fvec2 center;
+  float radius;
+};
+
+struct Triangle {
   glm::fvec2 v[3];
 };
 

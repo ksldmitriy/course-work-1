@@ -68,9 +68,9 @@ void InstanceRenderer::ApplyCameraSettings() {
 
 void InstanceRenderer::ApplySpriteSizeSettings() {
   SpriteVertex unique_vertices[4] = {{{0.5f, 0.5f}, {1.0f, 1.0f}},
-                               {{0.5f, -0.5f}, {1.0f, 0.0f}},
-                               {{-0.5f, -0.5f}, {0.0f, 0.0f}},
-                               {{-0.5f, 0.5f}, {0.0f, 1.0f}}};
+                                     {{0.5f, -0.5f}, {1.0f, 0.0f}},
+                                     {{-0.5f, -0.5f}, {0.0f, 0.0f}},
+                                     {{-0.5f, 0.5f}, {0.0f, 1.0f}}};
 
   for (auto &v : unique_vertices) {
     v.pos.x *= settings.sprite_size.x;
@@ -78,8 +78,8 @@ void InstanceRenderer::ApplySpriteSizeSettings() {
   }
 
   SpriteVertex vertices[6] = {unique_vertices[0], unique_vertices[1],
-                        unique_vertices[2], unique_vertices[0],
-                        unique_vertices[2], unique_vertices[3]};
+                              unique_vertices[2], unique_vertices[0],
+                              unique_vertices[2], unique_vertices[3]};
 
   char *mapped_memory = (char *)vertex_buffer->Map();
 
@@ -113,6 +113,37 @@ void InstanceRenderer::LoadSprites(vector<Transforn2D> &sprites) {
   TRACE("instance renderer sprites loaded");
 
   CreateCommandBuffers();
+}
+
+void InstanceRenderer::CreateInstanceBuffers(size_t size) {
+  // create buffer
+  vk::BufferCreateInfo create_info;
+  create_info.queue = queue;
+  create_info.size = sizeof(InstanceData) * size;
+  create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+  instance_buffer = make_unique<vk::Buffer>(*device, create_info);
+
+  // allocate memory
+  vk::PhysicalDevice &physical_device = device->GetPhysicalDevice();
+
+  vk::ChooseMemoryTypeInfo choose_info;
+  choose_info.memory_types = instance_buffer->GetMemoryTypes();
+  choose_info.heap_properties = 0;
+  choose_info.properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
+  uint32_t memory_type = physical_device.ChooseMemoryType(choose_info);
+
+  vector<vk::MemoryObject *> buffers = {instance_buffer.get()};
+
+  VkDeviceSize memory_size = vk::DeviceMemory::CalculateMemorySize(buffers);
+
+  instance_buffer_memory =
+      make_unique<vk::DeviceMemory>(*device, memory_size, memory_type);
+
+  instance_buffer_memory->BindBuffer(*instance_buffer);
+
+  sprites_capacity = size;
 }
 
 InstanceRenderer::~InstanceRenderer() {
@@ -421,37 +452,6 @@ size_t InstanceRenderer::GetOptimalSpritesCapacity(size_t sprites_count) {
   }
 
   return optimal_capacity;
-}
-
-void InstanceRenderer::CreateInstanceBuffers(size_t size) {
-  // create buffer
-  vk::BufferCreateInfo create_info;
-  create_info.queue = queue;
-  create_info.size = sizeof(InstanceData) * size;
-  create_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-
-  instance_buffer = make_unique<vk::Buffer>(*device, create_info);
-
-  // allocate memory
-  vk::PhysicalDevice &physical_device = device->GetPhysicalDevice();
-
-  vk::ChooseMemoryTypeInfo choose_info;
-  choose_info.memory_types = instance_buffer->GetMemoryTypes();
-  choose_info.heap_properties = 0;
-  choose_info.properties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-
-  uint32_t memory_type = physical_device.ChooseMemoryType(choose_info);
-
-  vector<vk::MemoryObject *> buffers = {vertex_buffer.get()};
-
-  VkDeviceSize memory_size = vk::DeviceMemory::CalculateMemorySize(buffers);
-
-  instance_buffer_memory =
-      make_unique<vk::DeviceMemory>(*device, memory_size, memory_type);
-
-  instance_buffer_memory->BindBuffer(*instance_buffer);
-
-  sprites_capacity = size;
 }
 
 void InstanceRenderer::CreateVertexBuffer() {

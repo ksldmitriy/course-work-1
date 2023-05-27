@@ -80,14 +80,14 @@ void VulkanApplication::Prepare() {
 
 void VulkanApplication::CreateRenderers() {
   CreateRoadRenderer();
-  CreateInstanceRenderer();
+  CreateCarsRenderer();
   CreateDebugRenderer();
   CreateImguiRenderer();
 }
 
 void VulkanApplication::DestoyRenderers() {
   road_renderer.reset();
-  instance_renderer.reset();
+  cars_renderer.reset();
   debug_renderer.reset();
   imgui_renderer.reset();
 }
@@ -148,6 +148,8 @@ void VulkanApplication::CleanupSyncObjects() {
 }
 
 void VulkanApplication::ChangeSurface() {
+  DEBUG("changing suface");
+
   vkDeviceWaitIdle(device->GetHandle());
 
   swapchain.reset();
@@ -163,8 +165,18 @@ void VulkanApplication::ChangeSurface() {
   CleanupFramebuffers();
   CreateFramebuffers();
 
+  DestoyRenderers();
   CreateRenderers();
+
+  surface_changed = true;
 }
+
+
+bool VulkanApplication::IsSurfaceChanged(){
+  return surface_changed;
+  surface_changed = false;
+}
+
 
 void VulkanApplication::CreateImguiRenderer() {
   imgui_renderer.reset();
@@ -195,17 +207,6 @@ void VulkanApplication::CreateRoadRenderer() {
   create_info.settings = settings;
 
   road_renderer = make_unique<MeshRenderer>(create_info);
-
-  vector<Triangle> mesh;
-
-  Triangle t;
-  t.v[0] = {0, 1};
-  t.v[1] = {1, 0};
-  t.v[2] = {-1, 0};
-
-  mesh.push_back(t);
-  
-  road_renderer->LoadMehs(mesh);
 }
 
 void VulkanApplication::CreateDebugRenderer() {
@@ -223,7 +224,7 @@ void VulkanApplication::CreateDebugRenderer() {
   debug_renderer = make_unique<DebugRenderer>(create_info);
 }
 
-void VulkanApplication::CreateInstanceRenderer() {
+void VulkanApplication::CreateCarsRenderer() {
   const int total_sprites = 7;
 
   InstanceRendererSettings settings;
@@ -239,20 +240,7 @@ void VulkanApplication::CreateInstanceRenderer() {
   create_info.texture = car_texture->CreateImageView();
   create_info.settings = settings;
 
-  instance_renderer = make_unique<InstanceRenderer>(create_info);
-
-  vector<Transforn2D> sprites(total_sprites);
-
-  for (int i = 0; i < total_sprites; i++) {
-    Transforn2D sprite;
-    sprite.pos.x = -1 + (2.0 / total_sprites) * i;
-    sprite.pos.y = 0;
-    sprite.rot = 0;
-
-    sprites[i] = sprite;
-  }
-
-  instance_renderer->LoadSprites(sprites);
+  cars_renderer = make_unique<InstanceRenderer>(create_info);
 }
 
 void VulkanApplication::Draw() {
@@ -278,7 +266,7 @@ void VulkanApplication::Render(uint32_t next_image_index) {
       next_image_index, image_available_semaphore->GetHandle(),
       road_render_finished_semaphore->GetHandle(), VK_NULL_HANDLE);
 
-  instance_renderer->Render(
+  cars_renderer->Render(
       next_image_index, road_render_finished_semaphore->GetHandle(),
       cars_render_finished_semaphore->GetHandle(), VK_NULL_HANDLE);
 
@@ -312,7 +300,7 @@ void VulkanApplication::Present(uint32_t next_image_index) {
 void VulkanApplication::SetCamera(Camera camera){
   road_renderer->SetCamera(camera);
   debug_renderer->SetCamera(camera);
-  instance_renderer->SetCamera(camera);
+  cars_renderer->SetCamera(camera);
 }
 
 void VulkanApplication::CreateFramebuffers() {

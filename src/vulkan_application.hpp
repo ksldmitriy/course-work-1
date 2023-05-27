@@ -44,13 +44,15 @@ private:
   VkRenderPass road_render_pass, cars_render_pass, debug_render_pass,
       imgui_render_pass;
 
+  bool surface_changed = false;
+  
   void CreateRoadRenderPass();
   void CreateCarsRenderPass();
   void CreateDebugRenderPass();
   void CreateImguiRenderPass();
 
   void CreateRoadRenderer();
-  void CreateInstanceRenderer();
+  void CreateCarsRenderer();
   void CreateDebugRenderer();
   void CreateImguiRenderer();
 
@@ -74,16 +76,19 @@ private:
 
   void CreateTextures();
 
+  
 protected:
   unique_ptr<Window> window;
 
-  unique_ptr<InstanceRenderer> instance_renderer;
+  unique_ptr<InstanceRenderer> cars_renderer;
   unique_ptr<DebugRenderer> debug_renderer;
   unique_ptr<ImguiRenderer> imgui_renderer;
   unique_ptr<MeshRenderer> road_renderer;
 
   void InitVulkan(uint32_t glfw_extensions_count, const char **glfw_extensions);
   void Prepare();
+
+  bool IsSurfaceChanged();
 
   void SetCamera(Camera camera);
   

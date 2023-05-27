@@ -57,8 +57,7 @@ void MeshRenderer::ApplyCameraSettings() {
 
 MeshRendererSettings MeshRenderer::GetSettings() { return settings; }
 
-
-void MeshRenderer::LoadMehs(vector<Triangle> &mesh){
+void MeshRenderer::LoadMehs(vector<Triangle> &mesh) {
   size_t optimal_capacity = GetOptimalSpritesCapacity(mesh.size());
   if (optimal_capacity != mesh_capacity) {
     mesh_capacity = optimal_capacity;
@@ -68,7 +67,7 @@ void MeshRenderer::LoadMehs(vector<Triangle> &mesh){
 
   mesh_count = mesh.size();
 
-  MeshVertex *mapped_data = (MeshVertex*)vertex_buffer->Map();
+  MeshVertex *mapped_data = (MeshVertex *)vertex_buffer->Map();
 
   memcpy(mapped_data, mesh.data(), sizeof(mesh[0]) * mesh.size());
 
@@ -174,7 +173,7 @@ void MeshRenderer::CreateCommandBuffers() {
                             VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0,
                             1, &descriptor_set, 0, nullptr);
 
-    vkCmdDraw(command_buffer->GetHandle(), 3, mesh_count, 0, 0);
+    vkCmdDraw(command_buffer->GetHandle(), 3 * mesh_count, 1, 0, 0);
 
     vkCmdEndRenderPass(command_buffer->GetHandle());
 

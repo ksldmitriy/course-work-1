@@ -31,6 +31,8 @@ void DebugRenderer::Init() {
   UpdateDescriptorSet();
 
   CreatePipeline(extent, render_pass);
+  
+  CreateCommandBuffer(0);
 }
 
 void DebugRenderer::SetCamera(Camera camera) {
@@ -199,7 +201,7 @@ void DebugRenderer::CreateCommandBuffer(uint32_t image_index) {
                           VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0,
                           1, &descriptor_set, 0, nullptr);
 
-  vkCmdDraw(command_buffer->GetHandle(), 2, lines_count, 0, 0);
+  vkCmdDraw(command_buffer->GetHandle(), 2* lines_count, 1, 0, 0);
 
   vkCmdEndRenderPass(command_buffer->GetHandle());
 

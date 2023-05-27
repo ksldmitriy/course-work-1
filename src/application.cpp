@@ -11,37 +11,88 @@ void Application::Run() {
 void Application::Prepare() {
   VulkanApplication::Prepare();
 
+  move_state = false;
+  camera = {{0, 0}, 0.4};
+
   program_start = now();
+  prev_frame = now();
   frame_time_history.resize(100, 0);
   fps_history.resize(100, 0);
+
+  cars_renderer->SetSpriteSize({0.2, 0.4});
+
+  LoadMap();
+
+  CreateSimulation();
+}
+
+void Application::CreateSimulation() {
+  SimulationRenderers renderers;
+  renderers.cars_renderer = cars_renderer.get();
+  renderers.debug_renderer = debug_renderer.get();
+
+  SimulationCreateInfo create_info;
+  create_info.road_collider = road_collider.get();
+  create_info.renderers = renderers;
+  create_info.map_borders = map_borders.get();
+  create_info.const_delta_time = 1.0 / 60;
+
+  simulation = make_unique<Simulation>(create_info);
+}
+
+void Application::LoadMap() {
+  MapLoader map_loader;
+  map_loader.LoadMap("map-1.obj");
+
+  map_mesh = map_loader.GetMesh();
+  outer_lines = map_loader.GetOutline();
+
+  road_renderer->LoadMehs(map_mesh);
+
+  map_borders = make_unique<MapBorders>(outer_lines);
+  road_collider = make_unique<RoadCollider>(map_mesh);
 }
 
 void Application::RenderLoop() {
   DEBUG("render loop launched");
 
   while (!window->ShouldClose()) {
+    if (IsSurfaceChanged()) {
+	  ChangeSufaceCallback();
+    }
+
     Update();
 
     RenderUI();
 
-	debug_renderer->DrawLine({{0, 0}, {1, 1}});
-    
-    Draw();
+    simulation->Render(true);
 
-	Camera camera;
-	camera.pos = {time_from_start / 5.0, 0};
-	camera.scale = 1;
-	
-	SetCamera(camera);
+    Draw();
   }
 
   DEBUG("render loop exit");
 }
 
 void Application::Update() {
+  debug_renderer->LoadLines(outer_lines);
+
   UpdateTime();
 
   ProcessEvents();
+
+  simulation->Update();
+
+  SetCamera(camera);
+}
+
+void Application::ChangeSufaceCallback() {
+  SimulationRenderers renderers;
+  renderers.cars_renderer = cars_renderer.get();
+  renderers.debug_renderer = debug_renderer.get();
+
+  simulation->SetRenderers(renderers);
+
+  road_renderer->LoadMehs(map_mesh);
 }
 
 void Application::ProcessEvents() {
@@ -61,9 +112,21 @@ void Application::ProcessEvents() {
   }
 }
 
-void Application::ProcessMouseMoveEvent(MouseMoveEvent event) {}
+void Application::ProcessMouseMoveEvent(MouseMoveEvent event) {
+  if (move_state) {
+    glm::fvec2 camera_move_vec = event.delta;
+    camera_move_vec.x *= -1;
+    camera_move_vec *= 2;
 
-void Application::ProcessMouseButtonEvent(MouseButtonEvent event) {}
+    camera.pos += camera_move_vec;
+  };
+}
+
+void Application::ProcessMouseButtonEvent(MouseButtonEvent event) {
+  if (event.button == MouseButton::middle) {
+    move_state = event.pressed;
+  }
+}
 
 void Application::UpdateTime() {
   time_point current_frame = now();
@@ -96,23 +159,27 @@ void Application::UpdateTime() {
 }
 
 void Application::RenderUI() {
+  static bool first_call = true;
+
   ImGui_ImplVulkan_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 
-  ImVec2 window_pos = {0, 0};
-  ImVec2 window_size = {500, 800};
-  ImGui::SetNextWindowPos(window_pos);
-  ImGui::SetNextWindowSize(window_size);
+  if (first_call) {
+    ImVec2 window_pos = {0, 0};
+    ImVec2 window_size = {500, 800};
+    ImGui::SetNextWindowPos(window_pos);
+    ImGui::SetNextWindowSize(window_size);
+  }
   ImGui::Begin("##main");
 
   ImGui::BeginTabBar("tabs");
 
-  if (ImGui::BeginTabItem("sprites")) {
-    DrawPerformanceMenu();
+  if (ImGui::BeginTabItem("test")) {
+    DrawTestMenu();
     ImGui::EndTabItem();
   }
-  if (ImGui::BeginTabItem("performance 2")) {
+  if (ImGui::BeginTabItem("performance")) {
     DrawPerformanceMenu();
     ImGui::EndTabItem();
   }
@@ -122,7 +189,11 @@ void Application::RenderUI() {
   ImGui::End();
 
   ImGui::Render();
+
+  first_call = false;
 }
+
+void Application::DrawTestMenu() {}
 
 void Application::DrawPerformanceMenu() {
   ImGui::PlotLines("frame time", frame_time_history.data(),

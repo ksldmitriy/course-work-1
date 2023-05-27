@@ -17,10 +17,8 @@ Window::Window() {
 
   glm::dvec2 cursor_pos;
   glfwGetCursorPos(handle, &cursor_pos.x, &cursor_pos.y);
-
-  MouseState state;
-  state.p_pos = cursor_pos;
-  state.pos = PixelToRelative(cursor_pos);
+  mouse_state.p_pos = cursor_pos;
+  mouse_state.pos = PixelToRelative(cursor_pos);
 
   glm::ivec2 window_pos;
   glm::ivec2 window_size;
@@ -163,6 +161,9 @@ void Window::CursorPositionCallback(double x_pos, double y_pos) {
 
   event.p_delta = event.p_pos - mouse_state.p_pos;
   event.delta = event.pos - mouse_state.pos;
+
+  mouse_state.p_pos = event.p_pos;
+  mouse_state.pos = event.pos;
 
   mouse_move_events.push_back(event);
 }

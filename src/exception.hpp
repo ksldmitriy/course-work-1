@@ -1,3 +1,4 @@
+#pragma once
 #include "logs.hpp"
 #include <iostream>
 #include <memory>
