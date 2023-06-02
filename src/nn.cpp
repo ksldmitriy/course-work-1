@@ -17,17 +17,39 @@ NeuralNetwork::NeuralNetwork(NeuralNetworkCreateInfo &create_info) {
   layers_values[layers_count - 1].resize(create_info.layers_sizes.back());
 }
 
+NeuralNetwork::NeuralNetwork(NeuralNetwork &parent, float mutation) {
+  layers = parent.layers;
+  layers_values = parent.layers_values;
+  input_biases = parent.input_biases;
+
+  MutateArray(input_biases, mutation);
+
+  for (int i = 0; i < layers.size(); i++) {
+    for (int j = 0; j < layers[i].weights.size(); j++) {
+      MutateArray(layers[i].weights[j], mutation);
+    }
+
+    MutateArray(layers[i].biases, mutation);
+  }
+}
+
+void NeuralNetwork::MutateArray(vector<float> &arr, float mutation) {
+  for (auto &i : arr) {
+    i += RandomFloat(-mutation, +mutation);
+  }
+}
+
 void NeuralNetwork::Run() {
   AddBiases(layers_values[0], input_biases);
   ApplyActivaionFunction(layers_values.front());
 
   for (int i = 0; i < layers.size(); i++) {
     copy(layers[i].biases.begin(), layers[i].biases.end(),
-         layers_values[i].begin());
+         layers_values[i + 1].begin());
 
     ComputeLayer(layers_values[i], layers_values[i + 1], layers[i]);
 
-	ApplyActivaionFunction(layers_values[i]);
+    ApplyActivaionFunction(layers_values[i + 1]);
   }
 }
 

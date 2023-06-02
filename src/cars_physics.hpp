@@ -1,6 +1,7 @@
 #pragma once
 #include "render_structs.hpp"
 #include <span>
+#include <iostream>
 
 using namespace std;
 

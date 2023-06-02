@@ -37,6 +37,8 @@ private:
 
   unique_ptr<Simulation> simulation;
 
+  float mutation;
+  int cars_count;
   bool draw_rays, draw_borders_kd_tree;
   
   void Prepare();
@@ -44,9 +46,10 @@ private:
 
   void ChangeSufaceCallback();
   
-  void RenderLoop();
+  void MainLoop();
 
   void CreateSimulation();
+  void RestartSimulation();
   
   void Update();
   void UpdateTime();
@@ -59,7 +62,7 @@ private:
   void ProcessMouseButtonEvent(MouseButtonEvent event);
 
   void RenderUI();
-  void DrawTestMenu();
+  void DrawMainMenu();
   void DrawPerformanceMenu();
 
 public:

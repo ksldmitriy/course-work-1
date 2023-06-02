@@ -30,8 +30,11 @@ private:
   void AddBiases(vector<float> &val, vector<float> &biases);
   void ComputeLayer(vector<float> &prev_l, vector<float> &cur_l, Layer &layer);
 
+  void MutateArray(vector<float>& arr, float mutation);
+  
 public:
   NeuralNetwork(NeuralNetworkCreateInfo &create_info);
+  NeuralNetwork(NeuralNetwork& parent, float mutation);
 
   void Run();
   vector<float> &GetOutputLayer();

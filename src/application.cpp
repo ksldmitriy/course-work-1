@@ -5,14 +5,14 @@ Application ::~Application() { INFO("application destroyed"); }
 void Application::Run() {
   Prepare();
 
-  RenderLoop();
+  MainLoop();
 }
 
 void Application::Prepare() {
   VulkanApplication::Prepare();
 
   move_state = false;
-  camera = {{0, 0}, 0.4};
+  camera = {{0, 0}, 0.3};
 
   program_start = now();
   prev_frame = now();
@@ -21,8 +21,11 @@ void Application::Prepare() {
 
   cars_renderer->SetSpriteSize({0.2, 0.4});
 
-  draw_rays = true;
-  draw_borders_kd_tree = true;
+  draw_rays = false;
+  draw_borders_kd_tree = false;
+
+  mutation = 0.03;
+  cars_count = 100;
 
   LoadMap();
 
@@ -56,7 +59,7 @@ void Application::LoadMap() {
   road_collider = make_unique<RoadCollider>(map_mesh);
 }
 
-void Application::RenderLoop() {
+void Application::MainLoop() {
   DEBUG("render loop launched");
 
   while (!window->ShouldClose()) {
@@ -65,6 +68,8 @@ void Application::RenderLoop() {
     }
 
     Update();
+
+    debug_renderer->LoadLines(outer_lines);
 
     RenderUI();
 
@@ -77,8 +82,6 @@ void Application::RenderLoop() {
 }
 
 void Application::Update() {
-  debug_renderer->LoadLines(outer_lines);
-
   UpdateTime();
 
   ProcessEvents();
@@ -131,6 +134,10 @@ void Application::ProcessMouseButtonEvent(MouseButtonEvent event) {
   }
 }
 
+void Application::RestartSimulation() {
+  simulation->RestartSimulation(cars_count, mutation);
+}
+
 void Application::UpdateTime() {
   time_point current_frame = now();
   duration delta_time_duration = current_frame - prev_frame;
@@ -178,12 +185,12 @@ void Application::RenderUI() {
 
   ImGui::BeginTabBar("tabs");
 
-  if (ImGui::BeginTabItem("performance")) {
-    DrawPerformanceMenu();
+  if (ImGui::BeginTabItem("main")) {
+    DrawMainMenu();
     ImGui::EndTabItem();
   }
-  if (ImGui::BeginTabItem("test")) {
-    DrawTestMenu();
+  if (ImGui::BeginTabItem("performance")) {
+    DrawPerformanceMenu();
     ImGui::EndTabItem();
   }
 
@@ -196,9 +203,19 @@ void Application::RenderUI() {
   first_call = false;
 }
 
-void Application::DrawTestMenu() {
+void Application::DrawMainMenu() {
   ImGui::Checkbox("draw rays", &draw_rays);
   ImGui::Checkbox("draw borders kd tree", &draw_borders_kd_tree);
+
+  ImGui::SliderInt("cars count", &cars_count, 10, 1000);
+  ImGui::SliderFloat("mutation", &mutation, 0.003, 0.06);
+
+  if (ImGui::Button("restart simulation")) {
+    RestartSimulation();
+  }
+
+  float last_best_score = simulation->GetBestResult();
+  ImGui::Text(("last best score: " + to_string(last_best_score)).c_str());
 }
 
 void Application::DrawPerformanceMenu() {

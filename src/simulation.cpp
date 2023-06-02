@@ -7,19 +7,20 @@ Simulation::Simulation(SimulationCreateInfo &create_info) {
 
   SetRenderers(create_info.renderers);
 
-  Transforn2D cars;
-  cars.pos = {0, 0};
-  cars.rot = -1.9;
+  Transforn2D start_pos;
+  start_pos.pos = {0, 0};
+  start_pos.rot = -1.9;
 
   const int cars_count = 100;
-
   raycast_results.resize(cars_count * rays_layout.size());
   cars_controls.resize(cars_count);
+  cars_rotation.resize(cars_count, 0);
 
   for (int i = 0; i < cars_count; i++) {
-    cars_transforms.push_back(cars);
+    cars_distance.push_back(0);
+    cars_transforms.push_back(start_pos);
     cars_velocity.push_back({});
-    cars_controls[i] = {0.3, -0.1};
+    cars_controls[i] = {};
   }
 
   CreateRaysLayout();
@@ -31,16 +32,26 @@ void Simulation::SetRenderers(SimulationRenderers &renderers) {
   debug_renderer = renderers.debug_renderer;
 }
 
-void Simulation::Update() {
-  UpdateRaycast();
+float Simulation::GetBestResult() { return last_best_result; }
 
-  return;
+void Simulation::Update() {
+  time_from_start++;
+
+  UpdateRaycast();
+  CreateRaycastLines();
+
+  UpdateControls();
   UpdateMovement();
   DeleteLosers();
 
   for (auto &nn : neural_networks) {
     nn->Run();
   }
+}
+
+void Simulation::UpdateControls() {
+  cars_ai.ComputeControls(cars_controls, neural_networks, rays_layout.size(),
+                          raycast_results, cars_transforms, cars_velocity);
 }
 
 void Simulation::UpdateRaycast() {
@@ -57,6 +68,63 @@ void Simulation::UpdateRaycast() {
 
 void Simulation::UpdateMovement() {
   cars_physics.CalculatePhysics(cars_transforms, cars_velocity, cars_controls);
+
+  for (int i = 0; i < cars_velocity.size(); i++) {
+    float rot = cars_transforms[i].rot;
+    glm::fvec2 dir = {-sin(rot), cos(rot)};
+
+    float forward_speed = glm::dot(cars_velocity[i], dir) / glm::length(dir);
+
+    cars_distance[i] += forward_speed;
+
+    cars_rotation[i] += fabs(cars_controls[i].rotation);
+  }
+}
+
+shared_ptr<NeuralNetwork> Simulation::GetChampion() {
+  int best = 0;
+
+  for (int i = 0; i < car_results.size(); i++) {
+    CarResult &best_r = car_results[best];
+    CarResult &next_r = car_results[i];
+
+    if (best_r.result < next_r.result) {
+      best = i;
+    }
+  }
+
+  last_best_result = car_results[best].result;
+  
+  return car_results[best].nn;
+}
+
+void Simulation::RestartSimulation(int cars_count, float mutation) {
+  while (!cars_transforms.empty()) {
+    DeleteCar(0);
+  }
+
+  shared_ptr<NeuralNetwork> champion = GetChampion();
+  car_results.clear();
+
+  raycast_results.resize(cars_count * rays_layout.size());
+  cars_distance.resize(cars_count);
+  cars_transforms.resize(cars_count);
+  cars_velocity.resize(cars_count);
+  cars_controls.resize(cars_count);
+  cars_rotation.resize(cars_count, 0);
+  neural_networks.resize(cars_count);
+
+  Transforn2D start_pos;
+  start_pos.pos = {0, 0};
+  start_pos.rot = -1.9;
+
+  for (int i = 0; i < cars_count; i++) {
+    cars_distance[i] = 0;
+    cars_transforms[i] = start_pos;
+    cars_velocity[i] = {0, 0};
+    cars_controls[i] = {};
+    neural_networks[i] = make_shared<NeuralNetwork>(*champion, mutation);
+  }
 }
 
 void Simulation::DeleteLosers() {
@@ -71,18 +139,35 @@ void Simulation::DeleteLosers() {
 
 void Simulation::CreateNeuralNerworks() {
   NeuralNetworkCreateInfo create_info;
-  create_info.layers_sizes = {(int)rays_layout.size() + 2, 10, 10, 3};
+  create_info.layers_sizes = {(int)rays_layout.size() + 2, 10, 10, 2};
 
   for (int i = 0; i < cars_transforms.size(); i++) {
-    unique_ptr<NeuralNetwork> nn = make_unique<NeuralNetwork>(create_info);
-    neural_networks.push_back(move(nn));
+    shared_ptr<NeuralNetwork> nn = make_shared<NeuralNetwork>(create_info);
+    neural_networks.push_back(nn);
   }
 }
 
+float Simulation::EstimateCarResults(int index) {
+  float score = cars_distance[index] / time_from_start;
+  // score += cars_distance[index];
+  //  score += (cars_distance[index] / cars_rotation[index]);
+  // score += (cars_distance[index] / cars_rotation[index] / 5);
+
+  return score;
+}
+
 void Simulation::DeleteCar(int index) {
+  CarResult car_result;
+  car_result.nn = neural_networks[index];
+  car_result.result = EstimateCarResults(index);
+  car_results.push_back(car_result);
+
   cars_velocity.erase(cars_velocity.begin() + index);
   cars_transforms.erase(cars_transforms.begin() + index);
+  cars_controls.erase(cars_controls.begin() + index);
   neural_networks.erase(neural_networks.begin() + index);
+  cars_distance.erase(cars_distance.begin() + index);
+  cars_rotation.erase(cars_rotation.begin() + index);
 
   vector<float>::iterator raycast_first, raycast_last;
   GetRaycatsResultsRange(index, raycast_first, raycast_last);
@@ -103,13 +188,12 @@ void Simulation::Render(bool draw_rays, bool draw_borders_kd_tree) {
     RenderRays();
   }
 
-  if(draw_borders_kd_tree){
-	RenderKDBorders();
+  if (draw_borders_kd_tree) {
+    RenderKDBorders();
   }
 }
 
-
-void Simulation::RenderKDBorders(){
+void Simulation::RenderKDBorders() {
   vector<Rect> kd_rects = map_borders->GetKDRects();
 
   debug_renderer->LoadRects(kd_rects);
@@ -117,11 +201,7 @@ void Simulation::RenderKDBorders(){
 
 void Simulation::RenderCars() { cars_renderer->LoadSprites(cars_transforms); }
 
-void Simulation::RenderRays() {
-  CreateRaycastLines();
-
-  debug_renderer->LoadLines(raycast_lines);
-}
+void Simulation::RenderRays() { debug_renderer->LoadLines(raycast_lines); }
 
 void Simulation::CreateRaycastLines() {
   raycast_lines.resize(raycast_results.size());
