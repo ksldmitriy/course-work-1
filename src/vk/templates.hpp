@@ -55,4 +55,6 @@ extern VkImageCreateInfo image_create_info_template;
 
 extern VkSamplerCreateInfo sampler_create_info_template;
 
+extern VkSemaphoreWaitInfo semaphore_wait_info;
+
 } // namespace vk

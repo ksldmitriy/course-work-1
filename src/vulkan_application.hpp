@@ -1,39 +1,24 @@
 #pragma once
 #include "logs.hpp"
-#include "render_structs.hpp"
 #include "window.hpp"
 #include <chrono>
 #include <memory>
 
 #include <stb_image.h>
 
-#include "camera.hpp"
-#include "debug_renderer.hpp"
-#include "imgui_renderer.hpp"
-#include "instance_renderer.hpp"
-#include "mesh_renderer.hpp"
 #include "vk/vulkan.hpp"
-
-chrono::high_resolution_clock::time_point typedef time_point;
-chrono::high_resolution_clock::duration typedef duration;
-const auto now = chrono::high_resolution_clock::now;
+#include "texture_renderer.hpp"
 
 using namespace std;
 
 class VulkanApplication {
 private:
-  unique_ptr<vk::Semaphore> image_available_semaphore,
-      road_render_finished_semaphore, cars_render_finished_semaphore,
-      debug_render_finished_semaphore, imgui_render_finished_semaphore;
   VkFence fence;
-
-  unique_ptr<vk::CommandPool> command_pool;
-  unique_ptr<vk::CommandBuffer> staging_command_buffer;
-
-  vector<VkFramebuffer> framebuffers;
 
   unique_ptr<vk::Instance> instance;
   unique_ptr<vk::Device> device;
+
+  vector<VkFramebuffer> framebuffers;
 
   unique_ptr<vk::Swapchain> swapchain;
 
@@ -41,21 +26,17 @@ private:
 
   unique_ptr<vk::Texture> car_texture;
 
-  VkRenderPass road_render_pass, cars_render_pass, debug_render_pass,
-      imgui_render_pass;
+  unique_ptr<vk::Image> pheromone_map_image;
+  unique_ptr<vk::ImageView> pheromone_map_view;
 
-  bool surface_changed = false;
+  unique_ptr<TextureRenderer> texture_renderer;
   
-  void CreateRoadRenderPass();
-  void CreateCarsRenderPass();
-  void CreateDebugRenderPass();
-  void CreateImguiRenderPass();
+  VkRenderPass pheromone_render_pass;
+  
+  bool surface_changed = false;
 
-  void CreateRoadRenderer();
-  void CreateCarsRenderer();
-  void CreateDebugRenderer();
-  void CreateImguiRenderer();
-
+  static constexpr glm::ivec2 map_size = {100, 100};
+  
   void CreateFramebuffers();
   void CreateSyncObjects();
 
@@ -69,29 +50,22 @@ private:
                       const char **glfw_extensions);
   void CreateDevice();
 
+  void CreatePheromoneMap();
+  
+  void CreateTextureRenderPass();
+
+  void CreateTextureRenderer();
+  
   void ChangeSurface();
 
-  void CreateRenderers();
-  void DestoyRenderers();
-
-  void CreateTextures();
-
-  
 protected:
   unique_ptr<Window> window;
-
-  unique_ptr<InstanceRenderer> cars_renderer;
-  unique_ptr<DebugRenderer> debug_renderer;
-  unique_ptr<ImguiRenderer> imgui_renderer;
-  unique_ptr<MeshRenderer> road_renderer;
 
   void InitVulkan(uint32_t glfw_extensions_count, const char **glfw_extensions);
   void Prepare();
 
   bool IsSurfaceChanged();
 
-  void SetCamera(Camera camera);
-  
   void Draw();
 
 public:

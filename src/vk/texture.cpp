@@ -27,7 +27,7 @@ void Texture::LoadImage(char *image_data, glm::ivec2 image_size,
   image_crate_info.size = image_size;
   image_crate_info.format = VK_FORMAT_R8G8B8A8_SRGB;
 
-  image = make_unique<vk::Image>(*device, image_crate_info);
+  image = make_unique<vk::Image>(device, image_crate_info);
 
   vector<vk::MemoryObject *> memory_objects = {image.get()};
   VkDeviceSize memory_size =

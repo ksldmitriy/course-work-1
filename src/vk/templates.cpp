@@ -256,4 +256,11 @@ VkSamplerCreateInfo sampler_create_info_template = {
     .unnormalizedCoordinates = VK_FALSE
     };
 
+
+  VkSemaphoreWaitInfo semaphore_wait_info = {
+	.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+	.pNext = nullptr,
+	.flags = 0,
+  };
+
 } // namespace vk

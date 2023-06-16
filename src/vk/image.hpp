@@ -31,7 +31,7 @@ private:
   VkImageLayout current_layout;
 
 public:
-  Image(Device &device, ImageCreateInfo &create_info);
+  Image(Device *device, ImageCreateInfo &create_info);
   Image(Image &) = delete;
   Image &operator=(Image &) = delete;
   ~Image();

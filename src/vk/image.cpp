@@ -3,8 +3,8 @@
 
 namespace vk {
 
-Image::Image(Device &device, ImageCreateInfo &create_info) {
-  this->device = &device;
+Image::Image(Device *device, ImageCreateInfo &create_info) {
+  this->device = device;
   format = create_info.format;
   current_layout = create_info.layout;
 
@@ -22,12 +22,12 @@ Image::Image(Device &device, ImageCreateInfo &create_info) {
       VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
   VkResult result =
-      vkCreateImage(device.GetHandle(), &vk_create_info, nullptr, &handle);
+      vkCreateImage(device->GetHandle(), &vk_create_info, nullptr, &handle);
   if (result) {
     throw CriticalException("cant create image");
   }
 
-  vkGetImageMemoryRequirements(device.GetHandle(), handle, &requirements);
+  vkGetImageMemoryRequirements(device->GetHandle(), handle, &requirements);
 
   TRACE("image created");
 }
